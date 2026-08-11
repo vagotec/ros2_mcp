@@ -1,11 +1,49 @@
 """MCP server entry point for ROS 2 MCP."""
 
-from mcp.server.mcpserver import MCPServer
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+
+from mcp.server import MCPServer
+
+from ros2_mcp.application.runtime.service import RuntimeService
+from ros2_mcp.mcp.runtime_tools import register_runtime_tools
+from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
+
+
+@dataclass
+class AppContext:
+    """Hold application resources for the MCP server lifecycle."""
+
+    ros_adapter: JazzyRosAdapter
+    runtime_service: RuntimeService
+
+
+@asynccontextmanager
+async def app_lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
+    """Create and clean up ROS runtime resources."""
+    ros_adapter = JazzyRosAdapter()
+    runtime_service = RuntimeService(ros_adapter)
+
+    try:
+        yield AppContext(
+            ros_adapter=ros_adapter,
+            runtime_service=runtime_service,
+        )
+    finally:
+        ros_adapter.close()
 
 
 def create_server() -> MCPServer:
     """Create and configure the MCP server."""
-    return MCPServer(name="ros2-mcp")
+    server = MCPServer(
+        name="ros2-mcp",
+        lifespan=app_lifespan,
+    )
+
+    register_runtime_tools(server)
+
+    return server
 
 
 def main() -> None:
