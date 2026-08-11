@@ -23,7 +23,7 @@ class RosAdapter(ABC):
 
     @abstractmethod
     def list_services(self) -> list[tuple[str, list[str]]]:
-        """Return discovered ROS services with their service types."""
+        """Return discovered ROS services with their types."""
         raise NotImplementedError
 
     @abstractmethod
@@ -34,3 +34,28 @@ class RosAdapter(ABC):
     ) -> dict[str, object]:
         """Read one message from a ROS topic."""
         raise NotImplementedError
+
+    @abstractmethod
+    def node_info(self, node_name: str) -> dict[str, object]:
+        """Return publishers, subscribers, services, and actions for a node."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_parameters(self, node_name: str) -> list[str]:
+        """Return parameter names exposed by a ROS node."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+    ) -> dict[str, object]:
+        """Return one parameter value from a ROS node."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def service_info(self, service_name: str) -> dict[str, object]:
+        """Return type, servers, and clients for a ROS service."""
+        raise NotImplementedError
+

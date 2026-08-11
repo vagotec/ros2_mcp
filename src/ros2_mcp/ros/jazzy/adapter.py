@@ -125,3 +125,316 @@ class JazzyRosAdapter(RosAdapter):
         self._executor.shutdown()
         self._node.destroy_node()
         rclpy.shutdown(context=self._context)
+
+    def node_info(self, node_name: str) -> dict[str, object]:
+        """Return runtime graph information for a discovered ROS node."""
+        base_name, namespace = self._normalize_node_name(node_name)
+
+        if not self._wait_for_node(
+            base_name=base_name,
+            namespace=namespace,
+            timeout_sec=1.0,
+        ):
+            raise LookupError(f"ROS node not found: {node_name}")
+
+        publishers = self._node.get_publisher_names_and_types_by_node(
+            base_name,
+            namespace,
+        )
+        subscribers = self._node.get_subscriber_names_and_types_by_node(
+            base_name,
+            namespace,
+        )
+        service_servers = self._node.get_service_names_and_types_by_node(
+            base_name,
+            namespace,
+        )
+        service_clients = self._node.get_client_names_and_types_by_node(
+            base_name,
+            namespace,
+        )
+
+        return {
+            "node": node_name,
+            "publishers": [
+                {"name": name, "types": types}
+                for name, types in sorted(publishers)
+            ],
+            "subscribers": [
+                {"name": name, "types": types}
+                for name, types in sorted(subscribers)
+            ],
+            "service_servers": [
+                {"name": name, "types": types}
+                for name, types in sorted(service_servers)
+            ],
+            "service_clients": [
+                {"name": name, "types": types}
+                for name, types in sorted(service_clients)
+            ],
+        }
+
+    def _normalize_node_name(self, node_name: str) -> tuple[str, str]:
+        """Split a fully qualified ROS node name into name and namespace."""
+        normalized_name = node_name.strip()
+
+        if not normalized_name:
+            raise ValueError("Node name must not be empty.")
+
+        normalized_name = normalized_name.lstrip("/")
+
+        if "/" not in normalized_name:
+            return normalized_name, "/"
+
+        namespace, base_name = normalized_name.rsplit("/", 1)
+
+        if not base_name:
+            raise ValueError(f"Invalid ROS node name: {node_name}")
+
+        return base_name, f"/{namespace}"
+
+    def _wait_for_node(
+        self,
+        base_name: str,
+        namespace: str,
+        timeout_sec: float,
+    ) -> bool:
+        """Wait briefly until a ROS node appears in the local graph."""
+        import time
+
+        deadline = time.monotonic() + timeout_sec
+        expected = (base_name, namespace)
+
+        while time.monotonic() < deadline:
+            if expected in self._node.get_node_names_and_namespaces():
+                return True
+
+            remaining = deadline - time.monotonic()
+
+            self._executor.spin_once(
+                timeout_sec=min(0.1, max(0.0, remaining))
+            )
+
+        return expected in self._node.get_node_names_and_namespaces()
+
+    def list_parameters(self, node_name: str) -> list[str]:
+        """Return parameter names exposed by a discovered ROS node."""
+        from rcl_interfaces.srv import ListParameters
+
+        base_name, namespace = self._normalize_node_name(node_name)
+
+        if not self._wait_for_node(
+            base_name=base_name,
+            namespace=namespace,
+            timeout_sec=1.0,
+        ):
+            raise LookupError(f"ROS node not found: {node_name}")
+
+        service_name = f"{namespace.rstrip('/')}/{base_name}/list_parameters"
+        client = self._node.create_client(
+            ListParameters,
+            service_name,
+        )
+
+        try:
+            if not client.wait_for_service(timeout_sec=1.0):
+                raise LookupError(
+                    f"Parameter service not available: {service_name}"
+                )
+
+            request = ListParameters.Request()
+            request.depth = 0
+
+            future = client.call_async(request)
+
+            self._executor.spin_until_future_complete(
+                future,
+                timeout_sec=1.0,
+            )
+
+            if not future.done():
+                raise TimeoutError(
+                    f"Timed out listing parameters for {node_name}"
+                )
+
+            response = future.result()
+
+            if response is None:
+                raise RuntimeError(
+                    f"Parameter request failed for {node_name}"
+                )
+
+            return sorted(response.result.names)
+        finally:
+            self._node.destroy_client(client)
+
+    def get_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+    ) -> dict[str, object]:
+        """Return one parameter value from a discovered ROS node."""
+        from rcl_interfaces.msg import ParameterType
+        from rcl_interfaces.srv import GetParameters
+
+        base_name, namespace = self._normalize_node_name(node_name)
+
+        if not self._wait_for_node(
+            base_name=base_name,
+            namespace=namespace,
+            timeout_sec=1.0,
+        ):
+            raise LookupError(f"ROS node not found: {node_name}")
+
+        service_name = f"{namespace.rstrip('/')}/{base_name}/get_parameters"
+        client = self._node.create_client(
+            GetParameters,
+            service_name,
+        )
+
+        try:
+            if not client.wait_for_service(timeout_sec=1.0):
+                raise LookupError(
+                    f"Parameter service not available: {service_name}"
+                )
+
+            request = GetParameters.Request()
+            request.names = [parameter_name]
+
+            future = client.call_async(request)
+
+            self._executor.spin_until_future_complete(
+                future,
+                timeout_sec=1.0,
+            )
+
+            if not future.done():
+                raise TimeoutError(
+                    f"Timed out reading parameter {parameter_name}"
+                )
+
+            response = future.result()
+
+            if response is None or not response.values:
+                raise RuntimeError(
+                    f"Parameter request failed: {parameter_name}"
+                )
+
+            value = response.values[0]
+
+            type_map = {
+                ParameterType.PARAMETER_NOT_SET: ("not_set", None),
+                ParameterType.PARAMETER_BOOL: (
+                    "bool",
+                    value.bool_value,
+                ),
+                ParameterType.PARAMETER_INTEGER: (
+                    "integer",
+                    value.integer_value,
+                ),
+                ParameterType.PARAMETER_DOUBLE: (
+                    "double",
+                    value.double_value,
+                ),
+                ParameterType.PARAMETER_STRING: (
+                    "string",
+                    value.string_value,
+                ),
+                ParameterType.PARAMETER_BYTE_ARRAY: (
+                    "byte_array",
+                    list(value.byte_array_value),
+                ),
+                ParameterType.PARAMETER_BOOL_ARRAY: (
+                    "bool_array",
+                    list(value.bool_array_value),
+                ),
+                ParameterType.PARAMETER_INTEGER_ARRAY: (
+                    "integer_array",
+                    list(value.integer_array_value),
+                ),
+                ParameterType.PARAMETER_DOUBLE_ARRAY: (
+                    "double_array",
+                    list(value.double_array_value),
+                ),
+                ParameterType.PARAMETER_STRING_ARRAY: (
+                    "string_array",
+                    list(value.string_array_value),
+                ),
+            }
+
+            parameter_type, parameter_value = type_map.get(
+                value.type,
+                ("unknown", None),
+            )
+
+            return {
+                "node": node_name,
+                "parameter": parameter_name,
+                "type": parameter_type,
+                "value": parameter_value,
+            }
+        finally:
+            self._node.destroy_client(client)
+
+    def service_info(self, service_name: str) -> dict[str, object]:
+        """Return type, servers, and clients for a discovered ROS service."""
+        normalized_service = service_name.strip()
+
+        if not normalized_service:
+            raise ValueError("Service name must not be empty.")
+
+        if not normalized_service.startswith("/"):
+            normalized_service = f"/{normalized_service}"
+
+        # Give ROS discovery a short opportunity to update the local graph.
+        self._executor.spin_once(timeout_sec=0.2)
+
+        discovered_services = dict(self._node.get_service_names_and_types())
+
+        if normalized_service not in discovered_services:
+            raise LookupError(
+                f"ROS service not found: {normalized_service}"
+            )
+
+        servers: list[str] = []
+        clients: list[str] = []
+
+        for node_name, namespace in self._node.get_node_names_and_namespaces():
+            if node_name == self._NODE_NAME and namespace == "/":
+                continue
+
+            full_node_name = (
+                f"/{node_name}"
+                if namespace == "/"
+                else f"{namespace.rstrip('/')}/{node_name}"
+            )
+
+            node_services = self._node.get_service_names_and_types_by_node(
+                node_name,
+                namespace,
+            )
+
+            if any(
+                name == normalized_service
+                for name, _ in node_services
+            ):
+                servers.append(full_node_name)
+
+            node_clients = self._node.get_client_names_and_types_by_node(
+                node_name,
+                namespace,
+            )
+
+            if any(
+                name == normalized_service
+                for name, _ in node_clients
+            ):
+                clients.append(full_node_name)
+
+        return {
+            "service": normalized_service,
+            "types": discovered_services[normalized_service],
+            "servers": sorted(servers),
+            "clients": sorted(clients),
+        }
+

@@ -81,3 +81,64 @@ def register_runtime_tools(server: MCPServer) -> None:
             topic_name=topic_name,
             timeout_sec=app_context.settings.runtime.read_topic_timeout_sec,
         )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def node_info(
+        node_name: str,
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Return publishers, subscribers, services, and clients for a ROS node."""
+        app_context = ctx.request_context.lifespan_context
+        return app_context.runtime_service.node_info(node_name)
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def list_parameters(
+        node_name: str,
+        ctx: Context["AppContext"],
+    ) -> list[str]:
+        """List parameters exposed by a ROS node."""
+        app_context = ctx.request_context.lifespan_context
+        return app_context.runtime_service.list_parameters(node_name)
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def get_parameter(
+        node_name: str,
+        parameter_name: str,
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Read one parameter from a ROS node."""
+        app_context = ctx.request_context.lifespan_context
+        return app_context.runtime_service.get_parameter(
+            node_name,
+            parameter_name,
+        )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def service_info(
+        service_name: str,
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Return type, servers, and clients for a ROS service."""
+        app_context = ctx.request_context.lifespan_context
+        return app_context.runtime_service.service_info(service_name)
+
