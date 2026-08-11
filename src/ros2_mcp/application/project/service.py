@@ -1,14 +1,20 @@
 """Application service for ROS 2 project operations."""
 
 from ros2_mcp.project.adapter import ProjectAdapter
+from ros2_mcp.project.execution.adapter import ExecutionAdapter, ExecutionResult
 
 
 class ProjectService:
-    """Provide project use cases independently of filesystem implementation."""
+    """Provide project use cases independently of implementation details."""
 
-    def __init__(self, project_adapter: ProjectAdapter) -> None:
-        """Create the service with a project adapter implementation."""
+    def __init__(
+        self,
+        project_adapter: ProjectAdapter,
+        execution_adapter: ExecutionAdapter | None = None,
+    ) -> None:
+        """Create the service with project and optional execution adapters."""
         self._project_adapter = project_adapter
+        self._execution_adapter = execution_adapter
 
     def create_workspace(self, workspace_path: str) -> dict[str, str]:
         """Create a ROS 2 workspace inside the allowed project root."""
@@ -78,3 +84,50 @@ class ProjectService:
             workspace_path,
             package_name,
         )
+
+    def build_project(
+        self,
+        workspace_path: str,
+        timeout_sec: float,
+        package_names: list[str] | None = None,
+    ) -> ExecutionResult:
+        """Build a ROS 2 workspace or selected packages with colcon."""
+        execution_adapter = self._require_execution_adapter()
+
+        command = ["colcon", "build"]
+
+        if package_names:
+            command.extend(["--packages-select", *package_names])
+
+        return execution_adapter.run(
+            command=command,
+            working_directory=workspace_path,
+            timeout_sec=timeout_sec,
+        )
+
+    def run_tests(
+        self,
+        workspace_path: str,
+        timeout_sec: float,
+        package_names: list[str] | None = None,
+    ) -> ExecutionResult:
+        """Run ROS 2 tests for a workspace or selected packages."""
+        execution_adapter = self._require_execution_adapter()
+
+        command = ["colcon", "test"]
+
+        if package_names:
+            command.extend(["--packages-select", *package_names])
+
+        return execution_adapter.run(
+            command=command,
+            working_directory=workspace_path,
+            timeout_sec=timeout_sec,
+        )
+
+    def _require_execution_adapter(self) -> ExecutionAdapter:
+        """Return the configured execution adapter or fail clearly."""
+        if self._execution_adapter is None:
+            raise RuntimeError("Project execution is not configured.")
+
+        return self._execution_adapter

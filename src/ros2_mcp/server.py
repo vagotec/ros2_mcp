@@ -12,6 +12,10 @@ from ros2_mcp.application.runtime.service import RuntimeService
 from ros2_mcp.config.settings import Settings, load_settings
 from ros2_mcp.mcp.project_tools import register_project_tools
 from ros2_mcp.mcp.runtime_tools import register_runtime_tools
+from ros2_mcp.project.execution.policy import CommandPolicy
+from ros2_mcp.project.execution.subprocess_adapter import (
+    SubprocessExecutionAdapter,
+)
 from ros2_mcp.project.filesystem.adapter import FilesystemProjectAdapter
 from ros2_mcp.project.filesystem.safe_filesystem import SafeFilesystem
 from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
@@ -37,7 +41,17 @@ async def app_lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
 
     filesystem = SafeFilesystem(settings.project.allowed_root)
     project_adapter = FilesystemProjectAdapter(filesystem)
-    project_service = ProjectService(project_adapter)
+
+    command_policy = CommandPolicy()
+    execution_adapter = SubprocessExecutionAdapter(
+        filesystem=filesystem,
+        command_policy=command_policy,
+    )
+
+    project_service = ProjectService(
+        project_adapter=project_adapter,
+        execution_adapter=execution_adapter,
+    )
 
     try:
         yield AppContext(

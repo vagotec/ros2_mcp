@@ -20,11 +20,20 @@ class ProjectSettings:
 
 
 @dataclass(frozen=True)
+class ExecutionSettings:
+    """Controlled project execution configuration values."""
+
+    build_timeout_sec: float
+    test_timeout_sec: float
+
+
+@dataclass(frozen=True)
 class Settings:
     """Application configuration."""
 
     runtime: RuntimeSettings
     project: ProjectSettings
+    execution: ExecutionSettings
 
 
 def load_settings(config_path: Path) -> Settings:
@@ -34,6 +43,7 @@ def load_settings(config_path: Path) -> Settings:
 
     runtime = data["runtime"]
     project = data["project"]
+    execution = data["execution"]
 
     return Settings(
         runtime=RuntimeSettings(
@@ -42,6 +52,16 @@ def load_settings(config_path: Path) -> Settings:
             ),
         ),
         project=ProjectSettings(
-            allowed_root=Path(project["allowed_root"]).expanduser().resolve(),
+            allowed_root=Path(
+                project["allowed_root"]
+            ).expanduser().resolve(),
+        ),
+        execution=ExecutionSettings(
+            build_timeout_sec=float(
+                execution["build_timeout_sec"]
+            ),
+            test_timeout_sec=float(
+                execution["test_timeout_sec"]
+            ),
         ),
     )

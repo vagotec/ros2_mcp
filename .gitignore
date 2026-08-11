@@ -12,10 +12,14 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Build artifacts
+# Python build artifacts
 build/
 dist/
 *.egg-info/
+
+# ROS 2 / colcon artifacts
+install/
+log/
 
 # Editors
 .vscode/

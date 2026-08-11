@@ -40,6 +40,7 @@ class FilesystemProjectAdapter(ProjectAdapter):
 
         package_xml = package_directory / "package.xml"
         setup_py = package_directory / "setup.py"
+        pytest_ini = package_directory / "pytest.ini"
         resource_marker = resource_directory / package_name
         init_file = python_package_directory / "__init__.py"
 
@@ -53,8 +54,7 @@ class FilesystemProjectAdapter(ProjectAdapter):
   <license>TODO</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
-
-  <test_depend>ament_pytest</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>
@@ -103,6 +103,12 @@ setup(
         "console_scripts": [],
     }},
 )
+"""
+        )
+
+        pytest_ini.write_text(
+            """[pytest]
+testpaths = test
 """
         )
 
