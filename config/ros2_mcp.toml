@@ -1,2 +1,5 @@
 [runtime]
 read_topic_timeout_sec = 1.0
+
+[project]
+allowed_root = "/home/sarvg/projects/robotics/ros2_mcp"

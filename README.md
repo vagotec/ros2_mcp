@@ -62,7 +62,7 @@ Detailed documentation for each phase is stored in `docs/README_PHASE_X.md`.
 
 ## Current Status
 
-Phase 4 completed. Phase 5 is next.
+Phase 5 completed. Phase 6 is next.
 
 ## Development Environment
 

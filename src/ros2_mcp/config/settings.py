@@ -13,10 +13,18 @@ class RuntimeSettings:
 
 
 @dataclass(frozen=True)
+class ProjectSettings:
+    """Project filesystem configuration values."""
+
+    allowed_root: Path
+
+
+@dataclass(frozen=True)
 class Settings:
     """Application configuration."""
 
     runtime: RuntimeSettings
+    project: ProjectSettings
 
 
 def load_settings(config_path: Path) -> Settings:
@@ -25,9 +33,15 @@ def load_settings(config_path: Path) -> Settings:
         data = tomllib.load(config_file)
 
     runtime = data["runtime"]
+    project = data["project"]
 
     return Settings(
         runtime=RuntimeSettings(
-            read_topic_timeout_sec=float(runtime["read_topic_timeout_sec"]),
-        )
+            read_topic_timeout_sec=float(
+                runtime["read_topic_timeout_sec"]
+            ),
+        ),
+        project=ProjectSettings(
+            allowed_root=Path(project["allowed_root"]).expanduser().resolve(),
+        ),
     )
