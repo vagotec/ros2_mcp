@@ -7,6 +7,8 @@ from ros2_mcp.project.filesystem.safe_filesystem import SafeFilesystem
 class FilesystemProjectAdapter(ProjectAdapter):
     """Create and manage ROS 2 project files inside an allowed root."""
 
+    _CONSOLE_SCRIPTS_MARKER = "            # ros2-mcp:console-scripts\n"
+
     def __init__(self, filesystem: SafeFilesystem) -> None:
         """Create the adapter with restricted filesystem access."""
         self._filesystem = filesystem
@@ -40,6 +42,7 @@ class FilesystemProjectAdapter(ProjectAdapter):
 
         package_xml = package_directory / "package.xml"
         setup_py = package_directory / "setup.py"
+        setup_cfg = package_directory / "setup.cfg"
         pytest_ini = package_directory / "pytest.ini"
         resource_marker = resource_directory / package_name
         init_file = python_package_directory / "__init__.py"
@@ -100,9 +103,20 @@ setup(
     license="TODO",
     tests_require=["pytest"],
     entry_points={{
-        "console_scripts": [],
+        "console_scripts": [
+            # ros2-mcp:console-scripts
+        ],
     }},
 )
+"""
+        )
+
+        setup_cfg.write_text(
+            f"""[develop]
+script_dir=$base/lib/{package_name}
+
+[install]
+install_scripts=$base/lib/{package_name}
 """
         )
 
@@ -120,6 +134,7 @@ testpaths = test
             "python_package": str(python_package_directory.resolve()),
             "package_xml": str(package_xml.resolve()),
             "setup_py": str(setup_py.resolve()),
+            "setup_cfg": str(setup_cfg.resolve()),
         }
 
     def create_node(
@@ -128,15 +143,21 @@ testpaths = test
         package_name: str,
         node_name: str,
     ) -> dict[str, str]:
-        """Create a Python ROS 2 node inside an existing package."""
+        """Create and register a Python ROS 2 node inside an existing package."""
         workspace = self._filesystem.resolve_path(workspace_path)
         package_directory = workspace / "src" / package_name
         python_package_directory = package_directory / package_name
         node_file = python_package_directory / f"{node_name}.py"
+        setup_py = package_directory / "setup.py"
 
         if not python_package_directory.is_dir():
             raise FileNotFoundError(
                 f"Python package does not exist: {python_package_directory}"
+            )
+
+        if not setup_py.is_file():
+            raise FileNotFoundError(
+                f"setup.py does not exist: {setup_py}"
             )
 
         class_name = node_name.title().replace("_", "")
@@ -171,6 +192,12 @@ def main(args: list[str] | None = None) -> None:
 if __name__ == "__main__":
     main()
 '''
+        )
+
+        self._register_console_script(
+            setup_py=setup_py,
+            package_name=package_name,
+            node_name=node_name,
         )
 
         return {
@@ -294,3 +321,34 @@ def test_package_import() -> None:
             "test_file": str(test_file.resolve()),
             "package": str(package_directory.resolve()),
         }
+
+    def _register_console_script(
+        self,
+        setup_py,
+        package_name: str,
+        node_name: str,
+    ) -> None:
+        """Register a generated node as a ROS 2 console executable."""
+        setup_text = setup_py.read_text()
+
+        entry = (
+            f'            "{node_name} = '
+            f'{package_name}.{node_name}:main",\n'
+        )
+
+        if entry in setup_text:
+            return
+
+        if self._CONSOLE_SCRIPTS_MARKER not in setup_text:
+            raise ValueError(
+                "setup.py does not contain the ros2-mcp "
+                "console scripts marker."
+            )
+
+        setup_text = setup_text.replace(
+            self._CONSOLE_SCRIPTS_MARKER,
+            entry + self._CONSOLE_SCRIPTS_MARKER,
+            1,
+        )
+
+        setup_py.write_text(setup_text)

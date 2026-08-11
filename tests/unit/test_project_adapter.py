@@ -49,11 +49,14 @@ def test_create_package_creates_python_package_structure(
     assert (package_directory / "resource/demo_pkg").is_file()
     assert (python_package_directory / "__init__.py").is_file()
 
+    assert (package_directory / "setup.cfg").is_file()
+
     assert result == {
         "package": str(package_directory.resolve()),
         "python_package": str(python_package_directory.resolve()),
         "package_xml": str((package_directory / "package.xml").resolve()),
         "setup_py": str((package_directory / "setup.py").resolve()),
+        "setup_cfg": str((package_directory / "setup.cfg").resolve()),
     }
 
 

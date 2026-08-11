@@ -488,3 +488,53 @@ ROS Adapter
 Project Adapter
 Execution Adapter
 ```
+
+## Real ROS 2 Runtime Verification
+
+Phase 6 was verified with a real ROS 2 Jazzy runtime, not only with unit and integration tests.
+
+The MCP server successfully performed the following workflow:
+
+1. Created a ROS 2 workspace.
+2. Created an `ament_python` package.
+3. Created a Python ROS 2 node.
+4. Created a launch file.
+5. Created a parameter YAML file.
+6. Created package tests.
+7. Built the package with `colcon build`.
+8. Tested the package with `colcon test`.
+9. Installed the generated node as a ROS 2 executable.
+10. Started the generated node with `ros2 run`.
+11. Verified the running node through the ROS graph.
+
+The generated executable was detected with:
+
+    ros2 pkg executables demo_robot
+
+Result:
+
+    demo_robot demo_node
+
+The generated node was started with:
+
+    ros2 run demo_robot demo_node
+
+The ROS graph reported:
+
+    /demo_node
+
+`ros2 node info /demo_node` also confirmed the expected ROS 2 parameter services and standard publishers.
+
+This verifies the complete path:
+
+    MCP project generation
+        -> ROS 2 package
+        -> ROS 2 node
+        -> colcon build
+        -> installation
+        -> ros2 run
+        -> ROS graph
+
+The persistent demo used for this verification can be recreated with:
+
+    python scripts/create_demo_project.py
