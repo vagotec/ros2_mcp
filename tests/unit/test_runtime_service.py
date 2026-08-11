@@ -34,6 +34,20 @@ class FakeRosAdapter(RosAdapter):
             ("/navigation/change_state", ["lifecycle_msgs/srv/ChangeState"]),
         ]
 
+    def read_topic(
+        self,
+        topic_name: str,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Return a fixed topic message."""
+        return {
+            "topic": topic_name,
+            "type": "std_msgs/msg/String",
+            "message": {
+                "data": "hello",
+            },
+        }
+
 
 def test_list_nodes_uses_ros_adapter() -> None:
     """Verify that RuntimeService delegates node discovery to the adapter."""
@@ -80,3 +94,21 @@ def test_list_services_uses_ros_adapter() -> None:
         ("/camera/get_parameters", ["rcl_interfaces/srv/GetParameters"]),
         ("/navigation/change_state", ["lifecycle_msgs/srv/ChangeState"]),
     ]
+
+
+def test_read_topic_uses_ros_adapter() -> None:
+    """Verify that RuntimeService delegates topic reading to the adapter."""
+    service = RuntimeService(FakeRosAdapter())
+
+    result = service.read_topic(
+        "/chatter",
+        timeout_sec=1.0,
+    )
+
+    assert result == {
+        "topic": "/chatter",
+        "type": "std_msgs/msg/String",
+        "message": {
+            "data": "hello",
+        },
+    }

@@ -25,3 +25,12 @@ class RosAdapter(ABC):
     def list_services(self) -> list[tuple[str, list[str]]]:
         """Return discovered ROS services with their service types."""
         raise NotImplementedError
+
+    @abstractmethod
+    def read_topic(
+        self,
+        topic_name: str,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Read one message from a ROS topic."""
+        raise NotImplementedError

@@ -63,3 +63,21 @@ def register_runtime_tools(server: MCPServer) -> None:
         """List discovered ROS 2 services with their service types."""
         app_context = ctx.request_context.lifespan_context
         return app_context.runtime_service.list_services()
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def read_topic(
+        topic_name: str,
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Read one message from a ROS 2 topic."""
+        app_context = ctx.request_context.lifespan_context
+
+        return app_context.runtime_service.read_topic(
+            topic_name=topic_name,
+            timeout_sec=app_context.settings.runtime.read_topic_timeout_sec,
+        )

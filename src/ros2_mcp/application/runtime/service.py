@@ -25,3 +25,11 @@ class RuntimeService:
     def list_services(self) -> list[tuple[str, list[str]]]:
         """Return discovered ROS services with their service types."""
         return self._ros_adapter.list_services()
+
+    def read_topic(
+        self,
+        topic_name: str,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Read one message from a ROS topic."""
+        return self._ros_adapter.read_topic(topic_name, timeout_sec)

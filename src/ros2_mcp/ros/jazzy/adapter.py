@@ -2,7 +2,10 @@
 
 import rclpy
 from rclpy.context import Context
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
+from rosidl_runtime_py.convert import message_to_ordereddict
+from rosidl_runtime_py.utilities import get_message
 
 from ros2_mcp.ros.adapter import RosAdapter
 
@@ -13,7 +16,7 @@ class JazzyRosAdapter(RosAdapter):
     _NODE_NAME = "ros2_mcp_runtime"
 
     def __init__(self) -> None:
-        """Initialize an isolated ROS context and internal discovery node."""
+        """Initialize an isolated ROS context, node, and executor."""
         self._context = Context()
         rclpy.init(context=self._context)
 
@@ -21,6 +24,11 @@ class JazzyRosAdapter(RosAdapter):
             self._NODE_NAME,
             context=self._context,
         )
+
+        self._executor = SingleThreadedExecutor(
+            context=self._context,
+        )
+        self._executor.add_node(self._node)
 
     def list_nodes(self) -> list[str]:
         """Return discovered ROS nodes excluding the internal MCP node."""
@@ -63,7 +71,57 @@ class JazzyRosAdapter(RosAdapter):
             if not service_name.startswith(internal_prefix)
         )
 
+    def read_topic(
+        self,
+        topic_name: str,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Read one message from a ROS topic within a timeout."""
+        topics = dict(self._node.get_topic_names_and_types())
+        topic_types = topics.get(topic_name, [])
+
+        if not topic_types:
+            return {
+                "topic": topic_name,
+                "type": None,
+                "message": None,
+            }
+
+        message_type_name = topic_types[0]
+        message_type = get_message(message_type_name)
+        received_message = None
+
+        def callback(message: object) -> None:
+            nonlocal received_message
+            received_message = message
+
+        subscription = self._node.create_subscription(
+            message_type,
+            topic_name,
+            callback,
+            10,
+        )
+
+        try:
+            self._executor.spin_once(
+                timeout_sec=timeout_sec,
+            )
+        finally:
+            self._node.destroy_subscription(subscription)
+
+        return {
+            "topic": topic_name,
+            "type": message_type_name,
+            "message": (
+                message_to_ordereddict(received_message)
+                if received_message is not None
+                else None
+            ),
+        }
+
     def close(self) -> None:
         """Destroy ROS resources owned by this adapter."""
+        self._executor.remove_node(self._node)
+        self._executor.shutdown()
         self._node.destroy_node()
         rclpy.shutdown(context=self._context)

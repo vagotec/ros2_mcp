@@ -1,0 +1,2 @@
+[runtime]
+read_topic_timeout_sec = 1.0
