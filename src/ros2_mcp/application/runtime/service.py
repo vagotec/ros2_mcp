@@ -13,3 +13,15 @@ class RuntimeService:
     def list_nodes(self) -> list[str]:
         """Return currently discovered ROS nodes."""
         return self._ros_adapter.list_nodes()
+
+    def list_topics(self) -> list[tuple[str, list[str]]]:
+        """Return discovered ROS topics with their message types."""
+        return self._ros_adapter.list_topics()
+
+    def topic_info(self, topic_name: str) -> dict[str, object]:
+        """Return information about a ROS topic."""
+        return self._ros_adapter.topic_info(topic_name)
+
+    def list_services(self) -> list[tuple[str, list[str]]]:
+        """Return discovered ROS services with their service types."""
+        return self._ros_adapter.list_services()
