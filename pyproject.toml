@@ -1,0 +1,32 @@
+[project]
+name = "ros2-mcp"
+version = "0.1.0"
+description = "A modular MCP server for ROS 2 runtime inspection and project management."
+readme = "README.md"
+authors = [
+    { name = "vagotec" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mcp>=2,<3",
+]
+
+[project.scripts]
+ros2-mcp = "ros2_mcp.server:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--disable-plugin-autoload",
+]
+testpaths = [
+    "tests",
+]

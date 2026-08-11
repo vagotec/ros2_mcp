@@ -1,0 +1,1 @@
+"""Restricted filesystem project adapter."""
