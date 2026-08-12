@@ -1,12 +1,12 @@
-# Phase 7 – Extended ROS 2 Runtime Inspection
+# Phase 5 – Extended ROS 2 Runtime Inspection
 
 ## Goal
 
-Phase 7 extends the ROS 2 MCP runtime with additional read-only inspection capabilities.
+Phase 5 extends the ROS 2 MCP runtime with additional read-only inspection capabilities.
 
 The goal is to allow an MCP client to inspect a running ROS 2 system without modifying its state.
 
-Phase 7 adds:
+Phase 5 adds:
 
 - detailed node inspection
 - parameter discovery
@@ -55,7 +55,7 @@ This allows ROS-specific implementation details to remain outside the MCP and ap
 
 ---
 
-## Phase 7 Runtime Tools
+## Phase 5 Runtime Tools
 
 The following runtime inspection capabilities were added.
 
@@ -169,7 +169,7 @@ clients: []
 
 ## Files Modified
 
-Phase 7 extends the existing runtime architecture.
+Phase 5 extends the existing runtime architecture.
 
 Main files:
 
@@ -216,7 +216,7 @@ Exposes the runtime operations as MCP tools.
 
 # Real ROS 2 Verification
 
-Phase 7 was verified against a real ROS 2 Jazzy runtime.
+Phase 5 was verified against a real ROS 2 Jazzy runtime.
 
 The persistent demo project created during Phase 6 was used.
 
@@ -384,9 +384,9 @@ ROS 2
 
 ## Verify Available MCP Runtime Tools
 
-The MCP runtime now provides the existing runtime tools plus the Phase 7 inspection tools.
+The MCP runtime now provides the existing runtime tools plus the Phase 5 inspection tools.
 
-Relevant Phase 7 tools:
+Relevant Phase 5 tools:
 
 ```text
 node_info
@@ -549,7 +549,7 @@ Verified result:
 
 # ROS Discovery Behavior
 
-During Phase 7 development an important ROS 2 runtime behavior was identified.
+During Phase 5 development an important ROS 2 runtime behavior was identified.
 
 Immediately after creating the ROS adapter, the ROS graph may not yet contain remote nodes.
 
@@ -595,7 +595,7 @@ This prevents invalid node-name errors caused by passing the leading `/` as part
 
 # Action Discovery
 
-Action discovery was investigated during Phase 7.
+Action discovery was investigated during Phase 5.
 
 The ROS 2 CLI supports:
 
@@ -615,7 +615,7 @@ subscribers
 
 An attempted direct implementation was therefore removed.
 
-Phase 7 does **not** expose a `list_actions` MCP tool.
+Phase 5 does **not** expose a `list_actions` MCP tool.
 
 This is intentional.
 
@@ -625,7 +625,7 @@ Action support should be implemented later using an appropriate ROS 2 action-spe
 
 # Safety
 
-Phase 7 remains read-only.
+Phase 5 remains read-only.
 
 The following operations inspect the ROS graph or read runtime state:
 
@@ -649,13 +649,13 @@ modify ROS projects
 execute arbitrary shell commands
 ```
 
-Write operations remain outside the Phase 7 runtime interface.
+Write operations remain outside the Phase 5 runtime interface.
 
 ---
 
 # Quick Manual Verification
 
-With `/demo_node` running, the essential Phase 7 runtime checks can be repeated with:
+With `/demo_node` running, the essential Phase 5 runtime checks can be repeated with:
 
 ```bash
 cd ~/projects/robotics/ros2_mcp
@@ -713,13 +713,13 @@ source .venv/bin/activate
 pytest -q
 ```
 
-For Phase 7, real ROS 2 runtime verification is considered more important than adding large numbers of isolated unit tests.
+For Phase 5, real ROS 2 runtime verification is considered more important than adding large numbers of isolated unit tests.
 
 ---
 
-# Phase 7 Result
+# Phase 5 Result
 
-Phase 7 extends `ros2_mcp` from basic ROS graph discovery and topic reading into more useful runtime inspection.
+Phase 5 extends `ros2_mcp` from basic ROS graph discovery and topic reading into more useful runtime inspection.
 
 The MCP server can now inspect:
 
@@ -742,15 +742,15 @@ ROS System
 
 The functionality was verified against a real ROS 2 Jazzy node and through the actual MCP server.
 
-Phase 7 is complete.
+Phase 5 is complete.
 
 ---
 
 # Next Phase
 
-## Phase 8 – Controlled Write and Deployment Readiness
+## Phase 6 – Controlled Write and Deployment Readiness
 
-Phase 8 will introduce carefully controlled write capabilities.
+Phase 6 will introduce carefully controlled write capabilities.
 
 Possible areas include:
 
@@ -762,7 +762,7 @@ call_service
 
 Write operations must not simply expose unrestricted ROS access.
 
-Phase 8 should define explicit safety policies for:
+Phase 6 should define explicit safety policies for:
 
 - allowed operations
 - allowed topics
