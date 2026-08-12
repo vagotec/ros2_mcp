@@ -93,6 +93,21 @@ class FakeRosAdapter(RosAdapter):
             "clients": [],
         }
 
+    def publish_topic(
+        self,
+        topic_name: str,
+        message_type: str,
+        message: dict[str, object],
+    ) -> dict[str, object]:
+        """Return a fixed publication result."""
+        return {
+            "topic": topic_name,
+            "type": message_type,
+            "message": message,
+            "subscriber_count": 1,
+            "published": True,
+        }
+
 
 def test_list_nodes_uses_ros_adapter() -> None:
     """Verify that RuntimeService delegates node discovery to the adapter."""

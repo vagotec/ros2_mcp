@@ -142,3 +142,26 @@ def register_runtime_tools(server: MCPServer) -> None:
         app_context = ctx.request_context.lifespan_context
         return app_context.runtime_service.service_info(service_name)
 
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=False,
+            open_world_hint=False,
+        )
+    )
+    def publish_topic(
+        topic_name: str,
+        message_type: str,
+        message: dict[str, object],
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Publish one message to a ROS 2 topic."""
+        app_context = ctx.request_context.lifespan_context
+
+        return app_context.runtime_service.publish_topic(
+            topic_name=topic_name,
+            message_type=message_type,
+            message=message,
+        )

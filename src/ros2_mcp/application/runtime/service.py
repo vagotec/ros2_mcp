@@ -57,3 +57,16 @@ class RuntimeService:
         """Return runtime graph information for a ROS service."""
         return self._ros_adapter.service_info(service_name)
 
+
+    def publish_topic(
+        self,
+        topic_name: str,
+        message_type: str,
+        message: dict[str, object],
+    ) -> dict[str, object]:
+        """Publish one message to a ROS topic."""
+        return self._ros_adapter.publish_topic(
+            topic_name=topic_name,
+            message_type=message_type,
+            message=message,
+        )

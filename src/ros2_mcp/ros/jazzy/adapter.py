@@ -438,3 +438,75 @@ class JazzyRosAdapter(RosAdapter):
             "clients": sorted(clients),
         }
 
+
+    def publish_topic(
+        self,
+        topic_name: str,
+        message_type: str,
+        message: dict[str, object],
+    ) -> dict[str, object]:
+        """Publish one dynamically typed message to a ROS topic."""
+        from rosidl_runtime_py.set_message import set_message_fields
+
+        normalized_topic = topic_name.strip()
+        normalized_type = message_type.strip()
+
+        if not normalized_topic:
+            raise ValueError("Topic name must not be empty.")
+
+        if not normalized_topic.startswith("/"):
+            normalized_topic = f"/{normalized_topic}"
+
+        if not normalized_type:
+            raise ValueError("Message type must not be empty.")
+
+        if not isinstance(message, dict):
+            raise TypeError("Message must be a dictionary.")
+
+        try:
+            ros_message_type = get_message(normalized_type)
+        except (AttributeError, ImportError, ModuleNotFoundError, ValueError) as exc:
+            raise ValueError(
+                f"Unknown ROS message type: {normalized_type}"
+            ) from exc
+
+        ros_message = ros_message_type()
+
+        try:
+            set_message_fields(
+                ros_message,
+                message,
+            )
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Invalid message for ROS type {normalized_type}: {exc}"
+            ) from exc
+
+        publisher = self._node.create_publisher(
+            ros_message_type,
+            normalized_topic,
+            10,
+        )
+
+        try:
+            # Give DDS a short opportunity to discover existing subscribers.
+            self._executor.spin_once(timeout_sec=0.2)
+
+            subscriber_count = self._node.count_subscribers(
+                normalized_topic
+            )
+
+            publisher.publish(ros_message)
+
+            # Allow the middleware to process the outgoing publication.
+            self._executor.spin_once(timeout_sec=0.1)
+
+            return {
+                "topic": normalized_topic,
+                "type": normalized_type,
+                "message": message_to_ordereddict(ros_message),
+                "subscriber_count": subscriber_count,
+                "published": True,
+            }
+        finally:
+            self._node.destroy_publisher(publisher)

@@ -59,3 +59,13 @@ class RosAdapter(ABC):
         """Return type, servers, and clients for a ROS service."""
         raise NotImplementedError
 
+
+    @abstractmethod
+    def publish_topic(
+        self,
+        topic_name: str,
+        message_type: str,
+        message: dict[str, object],
+    ) -> dict[str, object]:
+        """Publish one message to a ROS topic."""
+        raise NotImplementedError
