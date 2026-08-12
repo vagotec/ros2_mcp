@@ -1,1 +1,0 @@
-"""ROS project management adapters."""

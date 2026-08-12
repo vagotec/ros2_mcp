@@ -1,1 +1,0 @@
-"""ROS project application services."""

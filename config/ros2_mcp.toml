@@ -1,9 +1,2 @@
 [runtime]
 read_topic_timeout_sec = 1.0
-
-[project]
-allowed_root = "/home/sarvg/projects/robotics/mcp_workspaces"
-
-[execution]
-build_timeout_sec = 120.0
-test_timeout_sec = 120.0

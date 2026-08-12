@@ -30,8 +30,14 @@ class FakeRosAdapter(RosAdapter):
     def list_services(self) -> list[tuple[str, list[str]]]:
         """Return fixed service names and service types."""
         return [
-            ("/camera/get_parameters", ["rcl_interfaces/srv/GetParameters"]),
-            ("/navigation/change_state", ["lifecycle_msgs/srv/ChangeState"]),
+            (
+                "/camera/get_parameters",
+                ["rcl_interfaces/srv/GetParameters"],
+            ),
+            (
+                "/navigation/change_state",
+                ["lifecycle_msgs/srv/ChangeState"],
+            ),
         ]
 
     def read_topic(
@@ -46,6 +52,45 @@ class FakeRosAdapter(RosAdapter):
             "message": {
                 "data": "hello",
             },
+        }
+
+    def node_info(self, node_name: str) -> dict[str, object]:
+        """Return fixed node graph information."""
+        return {
+            "node": node_name,
+            "publishers": [],
+            "subscribers": [],
+            "service_servers": [],
+            "service_clients": [],
+        }
+
+    def list_parameters(self, node_name: str) -> list[str]:
+        """Return fixed parameter names."""
+        return [
+            "start_type_description_service",
+            "use_sim_time",
+        ]
+
+    def get_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+    ) -> dict[str, object]:
+        """Return a fixed parameter value."""
+        return {
+            "node": node_name,
+            "parameter": parameter_name,
+            "type": "bool",
+            "value": False,
+        }
+
+    def service_info(self, service_name: str) -> dict[str, object]:
+        """Return fixed service graph information."""
+        return {
+            "service": service_name,
+            "types": ["rcl_interfaces/srv/GetParameters"],
+            "servers": ["/camera"],
+            "clients": [],
         }
 
 
@@ -91,8 +136,14 @@ def test_list_services_uses_ros_adapter() -> None:
     services = service.list_services()
 
     assert services == [
-        ("/camera/get_parameters", ["rcl_interfaces/srv/GetParameters"]),
-        ("/navigation/change_state", ["lifecycle_msgs/srv/ChangeState"]),
+        (
+            "/camera/get_parameters",
+            ["rcl_interfaces/srv/GetParameters"],
+        ),
+        (
+            "/navigation/change_state",
+            ["lifecycle_msgs/srv/ChangeState"],
+        ),
     ]
 
 

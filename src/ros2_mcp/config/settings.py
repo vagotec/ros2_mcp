@@ -13,27 +13,10 @@ class RuntimeSettings:
 
 
 @dataclass(frozen=True)
-class ProjectSettings:
-    """Project filesystem configuration values."""
-
-    allowed_root: Path
-
-
-@dataclass(frozen=True)
-class ExecutionSettings:
-    """Controlled project execution configuration values."""
-
-    build_timeout_sec: float
-    test_timeout_sec: float
-
-
-@dataclass(frozen=True)
 class Settings:
     """Application configuration."""
 
     runtime: RuntimeSettings
-    project: ProjectSettings
-    execution: ExecutionSettings
 
 
 def load_settings(config_path: Path) -> Settings:
@@ -42,26 +25,11 @@ def load_settings(config_path: Path) -> Settings:
         data = tomllib.load(config_file)
 
     runtime = data["runtime"]
-    project = data["project"]
-    execution = data["execution"]
 
     return Settings(
         runtime=RuntimeSettings(
             read_topic_timeout_sec=float(
                 runtime["read_topic_timeout_sec"]
-            ),
-        ),
-        project=ProjectSettings(
-            allowed_root=Path(
-                project["allowed_root"]
-            ).expanduser().resolve(),
-        ),
-        execution=ExecutionSettings(
-            build_timeout_sec=float(
-                execution["build_timeout_sec"]
-            ),
-            test_timeout_sec=float(
-                execution["test_timeout_sec"]
             ),
         ),
     )
