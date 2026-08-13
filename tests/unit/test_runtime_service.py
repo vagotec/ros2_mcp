@@ -108,6 +108,62 @@ class FakeRosAdapter(RosAdapter):
             "published": True,
         }
 
+    def call_service(
+        self,
+        service_name: str,
+        service_type: str,
+        request: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Return a fixed service-call result."""
+        return {
+            "service": service_name,
+            "type": service_type,
+            "request": request,
+            "response": {
+                "success": True,
+                "message": "ok",
+            },
+            "completed": True,
+        }
+
+    def set_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+        value: object,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Return a fixed parameter update result."""
+        return {
+            "node": node_name,
+            "parameter": parameter_name,
+            "value": value,
+            "successful": True,
+            "reason": "",
+        }
+
+    def send_action_goal(
+        self,
+        action_name: str,
+        action_type: str,
+        goal: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Return a fixed action result."""
+        return {
+            "action": action_name,
+            "type": action_type,
+            "goal": goal,
+            "accepted": True,
+            "status": 4,
+            "result": {
+                "sequence": [0, 1, 1, 2, 3],
+            },
+            "feedback": [],
+            "completed": True,
+        }
+
 
 def test_list_nodes_uses_ros_adapter() -> None:
     """Verify that RuntimeService delegates node discovery to the adapter."""

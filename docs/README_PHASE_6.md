@@ -6,33 +6,36 @@ Phase 6 extends `ros2_mcp` from read-only ROS 2 runtime inspection to controlled
 
 The previous runtime phases established the ability to inspect a running ROS 2 system through MCP tools.
 
-Phase 6 introduces carefully selected write operations while preserving the existing layered architecture and keeping ROS-specific implementation details outside the MCP layer.
+Phase 6 adds explicit write and interaction operations while preserving the existing layered architecture and keeping ROS-specific implementation details outside the MCP layer.
 
-The first write operation implemented in Phase 6 is:
-
-```text
-publish_topic
-```
-
-This allows an MCP-compatible client such as Codex to publish a single ROS 2 message without using shell commands or accessing ROS 2 directly.
-
-Phase 6 is intentionally implemented incrementally.
-
-Planned runtime interaction capabilities include:
+The implemented runtime interaction capabilities are:
 
 ```text
 publish_topic
 call_service
 set_parameter
+send_action_goal
 ```
 
-Additional controlled runtime capabilities may be introduced later after the core write operations are stable.
+These operations allow an MCP-compatible client such as Codex to interact with a running ROS 2 system without using shell commands or directly accessing `rclpy`.
+
+The implementation remains intentionally explicit.
+
+`ros2_mcp` does not expose arbitrary ROS CLI commands or unrestricted shell execution.
 
 ---
 
 ## Project Boundary
 
 `ros2_mcp` is responsible for interaction with a running ROS 2 system.
+
+Its responsibilities include:
+
+```text
+runtime inspection
+runtime monitoring
+controlled runtime interaction
+```
 
 It is not responsible for ROS 2 project creation or software development workflows.
 
@@ -69,7 +72,7 @@ This separation keeps runtime operations independent from filesystem and develop
 
 ---
 
-## Architecture
+# Architecture
 
 Phase 6 continues to use the existing layered runtime architecture.
 
@@ -95,46 +98,7 @@ rclpy
 ROS 2 / DDS
 ```
 
-For example, a topic publication follows this path:
-
-```text
-Codex
-    |
-    v
-ros2_mcp.publish_topic
-    |
-    v
-RuntimeService.publish_topic
-    |
-    v
-RosAdapter.publish_topic
-    |
-    v
-JazzyRosAdapter.publish_topic
-    |
-    v
-rclpy Publisher
-    |
-    v
-ROS 2 / DDS
-    |
-    v
-Topic Subscriber
-```
-
-The MCP layer does not access `rclpy` directly.
-
-The application service does not implement ROS-specific behavior.
-
-ROS-specific runtime interaction remains behind the `RosAdapter` abstraction.
-
----
-
-## Design Principles
-
-### Separation of Concerns
-
-Each layer has a specific responsibility.
+The individual layers have clearly separated responsibilities.
 
 ```text
 MCP layer
@@ -143,39 +107,94 @@ MCP layer
 Application layer
     Runtime use cases
 
-ROS adapter interface
-    Runtime abstraction boundary
+RosAdapter
+    ROS runtime abstraction
 
-Jazzy adapter
+JazzyRosAdapter
     ROS 2 Jazzy implementation
 
 rclpy
     ROS 2 Python client library
 ```
 
+The MCP layer does not access `rclpy` directly.
+
+The application layer does not implement ROS-specific behavior.
+
+All ROS-specific implementation remains behind the `RosAdapter` abstraction.
+
+---
+
+# Design Principles
+
+## Separation of Concerns
+
+Runtime interaction follows the same architectural boundary as runtime inspection.
+
+```text
+MCP Client
+        |
+        v
+Explicit MCP Tool
+        |
+        v
+RuntimeService
+        |
+        v
+RosAdapter
+        |
+        v
+JazzyRosAdapter
+        |
+        v
+ROS 2
+```
+
 This prevents MCP protocol code from becoming tightly coupled to ROS 2 implementation details.
 
-### Runtime-Only Responsibility
+---
+
+## Runtime-Only Responsibility
 
 `ros2_mcp` interacts with running ROS 2 systems.
 
 It does not create or modify ROS 2 source projects.
 
-Filesystem-based project creation belongs to:
+Filesystem-based development operations belong to:
 
 ```text
 ros2_dev_mcp
 ```
 
-### Controlled Write Operations
+The separation between the two servers is intentional and must remain intact.
 
-Phase 6 does not introduce unrestricted ROS 2 command execution.
+---
 
-Instead, individual runtime operations are exposed explicitly as MCP tools.
+## Explicit Runtime Operations
 
-The MCP client is not given an arbitrary shell or ROS CLI execution interface.
+Phase 6 does not introduce unrestricted ROS command execution.
 
-The preferred model is:
+Instead, individual runtime operations are exposed explicitly:
+
+```text
+publish_topic
+call_service
+set_parameter
+send_action_goal
+```
+
+The MCP client is not given an arbitrary:
+
+```text
+shell
+ros2 CLI
+Python execution
+filesystem execution
+```
+
+interface.
+
+The preferred architecture is:
 
 ```text
 MCP Client
@@ -184,7 +203,7 @@ MCP Client
 Explicit MCP Tool
     |
     v
-Validated Structured Input
+Structured Input
     |
     v
 RuntimeService
@@ -196,47 +215,40 @@ RosAdapter
 Controlled ROS 2 Operation
 ```
 
+This makes each capability individually testable, documentable, and restrictable.
+
 ---
 
 # Step 1 – Topic Publishing
 
 ## Overview
 
-The first controlled write capability introduced in Phase 6 is:
+The first controlled runtime interaction introduced in Phase 6 is:
 
 ```text
 publish_topic
 ```
 
-The tool publishes one message to a ROS 2 topic.
-
-The operation requires:
-
-```text
-topic_name
-message_type
-message
-```
+The tool publishes one structured message to a ROS 2 topic.
 
 Example:
 
 ```text
-topic_name   = /chatter
-message_type = std_msgs/msg/String
-message      = {"data": "hello from ros2_mcp"}
+Topic:
+/chatter
+
+Message type:
+std_msgs/msg/String
+
+Message:
+{"data": "hello from ros2_mcp"}
 ```
 
 ---
 
 ## MCP Tool
 
-The MCP-facing operation is:
-
-```text
-publish_topic
-```
-
-Conceptually, the tool accepts:
+Conceptually:
 
 ```python
 publish_topic(
@@ -274,125 +286,31 @@ Example result:
 
 ---
 
-## Tool Annotations
-
-`publish_topic` is a write operation.
-
-Its MCP annotations describe it as:
+## Topic Publishing Architecture
 
 ```text
-read_only_hint   = false
-destructive_hint = false
-idempotent_hint  = false
-open_world_hint  = false
-```
-
-### `read_only_hint = false`
-
-Publishing changes the observable ROS 2 runtime state by sending a message.
-
-Therefore the operation is not read-only.
-
-### `destructive_hint = false`
-
-The operation publishes a message but does not inherently delete ROS 2 resources.
-
-The semantic effect of the published message still depends on the target topic and receiving system.
-
-### `idempotent_hint = false`
-
-Publishing the same message multiple times can produce repeated effects.
-
-Therefore publication must not be treated as idempotent.
-
-### `open_world_hint = false`
-
-The operation interacts with the configured ROS 2 runtime rather than an unrestricted external system.
-
----
-
-## RosAdapter Interface
-
-The generic ROS adapter defines the operation independently from ROS 2 Jazzy implementation details.
-
-The interface is:
-
-```python
-def publish_topic(
-    self,
-    topic_name: str,
-    message_type: str,
-    message: dict[str, object],
-) -> dict[str, object]:
-    """Publish one message to a ROS topic."""
-```
-
-This maintains the adapter boundary.
-
-The application and MCP layers do not need to know how publishers are created or how ROS message classes are resolved.
-
----
-
-## RuntimeService
-
-`RuntimeService` exposes the publication use case to the MCP layer.
-
-Conceptually:
-
-```python
-def publish_topic(
-    self,
-    topic_name: str,
-    message_type: str,
-    message: dict[str, object],
-) -> dict[str, object]:
-    """Publish one message to a ROS topic."""
-```
-
-The service delegates the operation to the configured ROS adapter.
-
-The service does not import or use `rclpy`.
-
----
-
-## JazzyRosAdapter
-
-The ROS 2 Jazzy implementation performs the actual publication.
-
-The implementation follows this sequence:
-
-```text
-normalize topic name
-        |
-        v
-validate message type
-        |
-        v
-resolve ROS message class
-        |
-        v
-create ROS message instance
-        |
-        v
-populate message fields
-        |
-        v
-create temporary publisher
-        |
-        v
-allow DDS discovery
-        |
-        v
-count subscribers
-        |
-        v
-publish message
-        |
-        v
-process outgoing publication
-        |
-        v
-destroy temporary publisher
+Codex
+    |
+    v
+ros2_mcp.publish_topic
+    |
+    v
+RuntimeService.publish_topic
+    |
+    v
+RosAdapter.publish_topic
+    |
+    v
+JazzyRosAdapter.publish_topic
+    |
+    v
+rclpy Publisher
+    |
+    v
+ROS 2 / DDS
+    |
+    v
+Topic Subscriber
 ```
 
 ---
@@ -401,17 +319,9 @@ destroy temporary publisher
 
 The publisher is not limited to a hard-coded ROS message class.
 
-The requested message type is dynamically resolved.
+The requested type is dynamically resolved.
 
-For example:
-
-```text
-std_msgs/msg/String
-```
-
-is resolved to the corresponding generated ROS 2 message class.
-
-The same architecture can therefore support message types such as:
+Examples include:
 
 ```text
 std_msgs/msg/String
@@ -420,15 +330,15 @@ geometry_msgs/msg/Twist
 sensor_msgs/msg/JointState
 ```
 
-A particular message type must be installed and available in the active ROS 2 environment.
+The requested ROS interface must be installed and available in the active ROS 2 environment.
 
 ---
 
-## Dynamic Message Population
+## Structured Message Population
 
-The MCP request represents a ROS message as structured data.
+MCP clients use dictionaries instead of generated ROS message objects.
 
-Example:
+For example:
 
 ```json
 {
@@ -436,7 +346,7 @@ Example:
 }
 ```
 
-The Jazzy adapter creates the actual ROS message object and populates its fields.
+The Jazzy adapter converts the structured input into the appropriate ROS message.
 
 Conceptually:
 
@@ -444,7 +354,7 @@ Conceptually:
 MCP dictionary
       |
       v
-ROS message class
+ROS message type
       |
       v
 ROS message instance
@@ -453,344 +363,56 @@ ROS message instance
 set_message_fields
       |
       v
-populated ROS message
+Populated ROS message
 ```
-
-This allows MCP clients to work with normal structured data while the ROS adapter handles generated ROS message objects.
-
----
-
-## Topic Name Normalization
-
-The requested topic name is normalized before publication.
-
-For example:
-
-```text
-chatter
-```
-
-becomes:
-
-```text
-/chatter
-```
-
-An empty topic name is rejected.
-
----
-
-## Message Type Validation
-
-An empty message type is rejected.
-
-An unknown or unavailable ROS message type also results in an error.
-
-Example valid type:
-
-```text
-std_msgs/msg/String
-```
-
-Example invalid type:
-
-```text
-does_not_exist/msg/Fake
-```
-
-The adapter converts message type resolution failures into a controlled error.
-
----
-
-## Message Validation
-
-The MCP message must be represented as a dictionary.
-
-For:
-
-```text
-std_msgs/msg/String
-```
-
-a valid message is:
-
-```json
-{
-  "data": "hello"
-}
-```
-
-The supplied fields must be compatible with the selected ROS message type.
-
-Invalid or incompatible message fields result in an error.
 
 ---
 
 ## Temporary Publisher Lifecycle
 
-The current implementation creates a publisher for one controlled publication.
+The current implementation creates a temporary publisher for a controlled publication.
 
 ```text
 create publisher
       |
       v
-publish one message
+DDS discovery
+      |
+      v
+publish message
       |
       v
 destroy publisher
 ```
 
-The publisher is not permanently retained by the MCP server.
-
-This keeps the initial implementation simple and avoids maintaining a dynamic publisher registry.
-
-Persistent publishers may be introduced later if repeated or high-frequency publication becomes necessary.
+A persistent publisher registry is not currently required.
 
 ---
 
-## DDS Discovery
+## Real ROS 2 Verification
 
-ROS 2 communication uses DDS discovery.
+The implementation was tested against a real ROS 2 Jazzy runtime.
 
-A publisher created immediately before publication may need a short opportunity to discover existing subscribers.
-
-The implementation therefore provides a short discovery window before sending the message.
+An independent subscriber listened on:
 
 ```text
-create publisher
-      |
-      v
-short discovery window
-      |
-      v
-count subscribers
-      |
-      v
-publish
-```
-
-This improves reliability for the current single-message publication model.
-
----
-
-## Subscriber Count
-
-The publication result contains:
-
-```text
-subscriber_count
-```
-
-Example:
-
-```json
-{
-  "subscriber_count": 1
-}
-```
-
-This gives the MCP client useful runtime information.
-
-A result containing:
-
-```text
-published = true
-```
-
-means that the publication operation was executed.
-
-`subscriber_count` reports how many subscribers were discovered at publication time.
-
-It is not an end-to-end acknowledgement that every subscriber processed the message.
-
----
-
-# Verification
-
-## Existing Runtime Tests
-
-After adding `publish_topic`, the existing runtime tests continued to pass.
-
-Verified result:
-
-```text
-........ [100%]
-8 passed
-```
-
-This confirms that introducing the first write operation did not break the existing runtime functionality covered by the test suite.
-
----
-
-## MCP Tool Registration
-
-The MCP server was queried after the implementation.
-
-Verified result:
-
-```text
-publish_topic registered: True
-```
-
-The runtime tool inventory contained:
-
-```text
-get_parameter
-list_nodes
-list_parameters
-list_services
-list_topics
-node_info
-publish_topic
-read_topic
-service_info
-topic_info
-```
-
-This verifies that `publish_topic` is exposed through the MCP server.
-
----
-
-# Real ROS 2 Verification
-
-The feature was tested against a real ROS 2 Jazzy runtime.
-
-The test used:
-
-```text
-Topic:
 /chatter
-
-Message type:
-std_msgs/msg/String
 ```
-
-An independent ROS 2 subscriber was started with:
-
-```bash
-ros2 topic echo /chatter std_msgs/msg/String
-```
-
-The MCP server published:
-
-```json
-{
-  "topic_name": "/chatter",
-  "message_type": "std_msgs/msg/String",
-  "message": {
-    "data": "hello from ros2_mcp"
-  }
-}
-```
-
-The MCP result reported:
-
-```text
-error: False
-```
-
-with structured content:
-
-```json
-{
-  "topic": "/chatter",
-  "type": "std_msgs/msg/String",
-  "message": {
-    "data": "hello from ros2_mcp"
-  },
-  "subscriber_count": 1,
-  "published": true
-}
-```
-
-The ROS 2 subscriber received:
-
-```text
-data: hello from ros2_mcp
----
-```
-
-This verifies the complete runtime path:
-
-```text
-MCP Client
-    |
-    v
-publish_topic
-    |
-    v
-RuntimeService
-    |
-    v
-RosAdapter
-    |
-    v
-JazzyRosAdapter
-    |
-    v
-rclpy
-    |
-    v
-ROS 2 / DDS
-    |
-    v
-/chatter subscriber
-```
-
----
-
-# Codex Verification
-
-The operation was also tested through Codex using the registered `ros2_mcp` MCP server.
-
-The instruction supplied to Codex was:
-
-```text
-Use only ros2_mcp.
-
-Publish the message:
-
-hello from codex
-
-to the ROS 2 topic:
-
-/chatter
 
 using:
 
-std_msgs/msg/String
-
-Do not use shell commands.
-Do not modify files.
-Do not use ros2_dev_mcp.
-```
-
-Codex selected:
-
 ```text
-ros2_mcp.publish_topic
+std_msgs/msg/String
 ```
 
-with:
-
-```json
-{
-  "topic_name": "/chatter",
-  "message_type": "std_msgs/msg/String",
-  "message": {
-    "data": "hello from codex"
-  }
-}
-```
-
-The MCP server returned:
+The MCP publication returned:
 
 ```json
 {
   "topic": "/chatter",
   "type": "std_msgs/msg/String",
   "message": {
-    "data": "hello from codex"
+    "data": "hello from ros2_mcp"
   },
   "subscriber_count": 1,
   "published": true
@@ -800,20 +422,56 @@ The MCP server returned:
 The independent ROS 2 subscriber received:
 
 ```text
+data: hello from ros2_mcp
+---
+```
+
+---
+
+## Codex Verification
+
+The same operation was tested through Codex.
+
+Codex was instructed to use only:
+
+```text
+ros2_mcp
+```
+
+and not to use:
+
+```text
+shell commands
+filesystem operations
+ros2_dev_mcp
+```
+
+Codex selected:
+
+```text
+ros2_mcp.publish_topic
+```
+
+and published:
+
+```text
+hello from codex
+```
+
+The independent ROS 2 subscriber received:
+
+```text
 data: hello from codex
 ---
 ```
 
-This verifies the complete external workflow:
+Therefore the complete path was verified:
 
 ```text
-Natural-language instruction
+Natural-language request
         |
         v
 Codex
-        |
-        v
-MCP tool selection
         |
         v
 ros2_mcp.publish_topic
@@ -834,17 +492,1055 @@ ROS 2 / DDS
 /chatter
 ```
 
-Codex did not require shell execution to perform the publication.
+---
 
-No project files were modified.
+# Step 2 – Service Calls
 
-`ros2_dev_mcp` was not used.
+## Overview
+
+The second controlled runtime capability is:
+
+```text
+call_service
+```
+
+This allows an MCP client to call a ROS 2 service using structured input.
+
+The implementation dynamically resolves the requested ROS service type.
+
+---
+
+## MCP Tool
+
+Conceptually:
+
+```python
+call_service(
+    service_name: str,
+    service_type: str,
+    request: dict[str, object],
+)
+```
+
+A runtime timeout is passed internally through the service and adapter layers.
+
+Example:
+
+```text
+Service:
+/mcp_test/set_enabled
+
+Service type:
+std_srvs/srv/SetBool
+```
+
+Request:
+
+```json
+{
+  "data": true
+}
+```
+
+---
+
+## Service Call Architecture
+
+```text
+Codex
+    |
+    v
+ros2_mcp.call_service
+    |
+    v
+RuntimeService.call_service
+    |
+    v
+RosAdapter.call_service
+    |
+    v
+JazzyRosAdapter.call_service
+    |
+    v
+rclpy Client
+    |
+    v
+ROS 2 Service Server
+```
+
+---
+
+## Dynamic Service Type Resolution
+
+The service type is resolved dynamically.
+
+The verified example used:
+
+```text
+std_srvs/srv/SetBool
+```
+
+The ROS 2 Jazzy environment provides dynamic service lookup through the ROS interface runtime utilities.
+
+The resolved service contains:
+
+```text
+Request
+Response
+```
+
+For `std_srvs/srv/SetBool`:
+
+```text
+Request:
+bool data
+
+Response:
+bool success
+string message
+```
+
+---
+
+## Structured Service Requests
+
+The MCP client sends a normal dictionary.
+
+Example:
+
+```json
+{
+  "data": true
+}
+```
+
+The Jazzy adapter converts this structured input into the generated ROS service request object.
+
+Conceptually:
+
+```text
+MCP request dictionary
+        |
+        v
+ROS service type
+        |
+        v
+Request object
+        |
+        v
+set_message_fields
+        |
+        v
+ROS service call
+```
+
+The response is converted back into structured MCP data.
+
+---
+
+## Real ROS 2 Verification
+
+A real ROS 2 service was created:
+
+```text
+/mcp_test/set_enabled
+```
+
+using:
+
+```text
+std_srvs/srv/SetBool
+```
+
+The MCP request was:
+
+```json
+{
+  "data": true
+}
+```
+
+The service server received the request and logged:
+
+```text
+Set enabled: True
+```
+
+The MCP result was:
+
+```json
+{
+  "service": "/mcp_test/set_enabled",
+  "type": "std_srvs/srv/SetBool",
+  "request": {
+    "data": true
+  },
+  "response": {
+    "success": true,
+    "message": "enabled"
+  },
+  "completed": true
+}
+```
+
+---
+
+## Codex Verification
+
+Codex was instructed:
+
+```text
+Use only ros2_mcp.
+
+Call the ROS 2 service:
+
+/mcp_test/set_enabled
+
+using:
+
+std_srvs/srv/SetBool
+
+with request:
+
+{"data": true}
+
+Do not use shell commands.
+Do not modify files.
+Do not use ros2_dev_mcp.
+```
+
+Codex selected:
+
+```text
+ros2_mcp.call_service
+```
+
+The call completed successfully.
+
+Returned response:
+
+```json
+{
+  "success": true,
+  "message": "enabled"
+}
+```
+
+This verifies:
+
+```text
+Natural-language request
+        |
+        v
+Codex
+        |
+        v
+ros2_mcp.call_service
+        |
+        v
+RuntimeService
+        |
+        v
+RosAdapter
+        |
+        v
+JazzyRosAdapter
+        |
+        v
+ROS 2 Service
+```
+
+---
+
+# Step 3 – Parameter Writing
+
+## Overview
+
+The third controlled runtime capability is:
+
+```text
+set_parameter
+```
+
+This allows an MCP client to modify a parameter exposed by a running ROS 2 node.
+
+Parameter reading already existed through:
+
+```text
+get_parameter
+```
+
+Phase 6 adds the corresponding controlled write operation.
+
+---
+
+## MCP Tool
+
+Conceptually:
+
+```python
+set_parameter(
+    node_name: str,
+    parameter_name: str,
+    value: object,
+)
+```
+
+Example:
+
+```text
+Node:
+/mcp_parameter_test
+
+Parameter:
+enabled
+
+Value:
+true
+```
+
+---
+
+## Parameter Architecture
+
+```text
+Codex
+    |
+    v
+ros2_mcp.set_parameter
+    |
+    v
+RuntimeService.set_parameter
+    |
+    v
+RosAdapter.set_parameter
+    |
+    v
+JazzyRosAdapter.set_parameter
+    |
+    v
+ROS 2 Parameter Service
+    |
+    v
+/mcp_parameter_test
+```
+
+---
+
+## Real ROS 2 Verification
+
+A real ROS 2 node was created:
+
+```text
+/mcp_parameter_test
+```
+
+The node declared:
+
+```text
+enabled = false
+```
+
+Before the MCP write, ROS 2 reported:
+
+```text
+Boolean value is: False
+```
+
+The MCP operation changed the value to:
+
+```text
+true
+```
+
+The result was:
+
+```json
+{
+  "node": "/mcp_parameter_test",
+  "parameter": "enabled",
+  "reason": "",
+  "successful": true,
+  "value": true
+}
+```
+
+The value was then independently read through the MCP runtime:
+
+```json
+{
+  "node": "/mcp_parameter_test",
+  "parameter": "enabled",
+  "type": "bool",
+  "value": true
+}
+```
+
+An independent ROS 2 CLI verification reported:
+
+```text
+Boolean value is: True
+```
+
+This verifies that the parameter was actually changed in the running ROS 2 node.
+
+---
+
+## Codex Verification
+
+Codex was instructed:
+
+```text
+Use only ros2_mcp.
+
+Set the parameter:
+
+enabled
+
+on node:
+
+/mcp_parameter_test
+
+to:
+
+true
+
+Do not use shell commands.
+Do not modify files.
+Do not use ros2_dev_mcp.
+```
+
+Codex selected:
+
+```text
+ros2_mcp.set_parameter
+```
+
+and returned:
+
+```json
+{
+  "node": "/mcp_parameter_test",
+  "parameter": "enabled",
+  "value": true,
+  "successful": true,
+  "reason": ""
+}
+```
+
+The value was independently confirmed from ROS 2:
+
+```text
+Boolean value is: True
+```
+
+Therefore the complete path was verified:
+
+```text
+Codex
+    |
+    v
+ros2_mcp.set_parameter
+    |
+    v
+RuntimeService
+    |
+    v
+RosAdapter
+    |
+    v
+JazzyRosAdapter
+    |
+    v
+ROS 2 parameter services
+    |
+    v
+/mcp_parameter_test
+```
+
+---
+
+# Step 4 – ROS 2 Actions
+
+## Overview
+
+The fourth controlled runtime capability is:
+
+```text
+send_action_goal
+```
+
+ROS 2 Actions are different from topics and services.
+
+They support longer-running operations with:
+
+```text
+Goal
+Feedback
+Result
+```
+
+This makes Actions particularly important for later robotics workflows.
+
+---
+
+## Action Model
+
+Conceptually:
+
+```text
+Action Client
+      |
+      | Goal
+      v
+Action Server
+      |
+      | Feedback
+      v
+Action Client
+      |
+      | Result
+      v
+Action Client
+```
+
+The MCP abstraction exposes a controlled action goal operation without requiring the client to use ROS 2 APIs directly.
+
+---
+
+## MCP Tool
+
+Conceptually:
+
+```python
+send_action_goal(
+    action_name: str,
+    action_type: str,
+    goal: dict[str, object],
+)
+```
+
+A runtime timeout is passed internally through the service and adapter layers.
+
+The verified example used:
+
+```text
+Action:
+/mcp_test/fibonacci
+
+Action type:
+example_interfaces/action/Fibonacci
+```
+
+Goal:
+
+```json
+{
+  "order": 8
+}
+```
+
+---
+
+## Action Architecture
+
+```text
+Codex
+    |
+    v
+ros2_mcp.send_action_goal
+    |
+    v
+RuntimeService.send_action_goal
+    |
+    v
+RosAdapter.send_action_goal
+    |
+    v
+JazzyRosAdapter.send_action_goal
+    |
+    v
+rclpy ActionClient
+    |
+    v
+ROS 2 Action Server
+```
+
+---
+
+## Dynamic Action Type Resolution
+
+The implementation dynamically resolves the requested action type.
+
+The verified action was:
+
+```text
+example_interfaces/action/Fibonacci
+```
+
+Its interface is:
+
+```text
+Goal:
+int32 order
+
+Result:
+int32[] sequence
+
+Feedback:
+int32[] sequence
+```
+
+The action implementation is therefore not hard-coded specifically to Fibonacci.
+
+The requested action interface must be installed and available in the active ROS 2 environment.
+
+---
+
+## Structured Goal Creation
+
+The MCP client supplies the action goal as structured data.
+
+Example:
+
+```json
+{
+  "order": 8
+}
+```
+
+The Jazzy adapter resolves the action type and creates the generated ROS Goal object.
+
+Conceptually:
+
+```text
+MCP goal dictionary
+        |
+        v
+ROS action type
+        |
+        v
+Goal object
+        |
+        v
+set_message_fields
+        |
+        v
+ActionClient
+        |
+        v
+ROS 2 Action Server
+```
+
+---
+
+## Goal Acceptance
+
+ROS 2 Action servers may accept or reject goals.
+
+The MCP result therefore exposes:
+
+```text
+accepted
+```
+
+A successful verified goal returned:
+
+```json
+{
+  "accepted": true
+}
+```
+
+The client does not assume that every submitted goal is accepted.
+
+---
+
+## Action Feedback
+
+Actions can provide feedback while a goal is executing.
+
+The direct MCP verification collected feedback such as:
+
+```json
+[
+  {
+    "sequence": [0, 1, 1]
+  },
+  {
+    "sequence": [0, 1, 1, 2]
+  },
+  {
+    "sequence": [0, 1, 1, 2, 3]
+  },
+  {
+    "sequence": [0, 1, 1, 2, 3, 5]
+  },
+  {
+    "sequence": [0, 1, 1, 2, 3, 5, 8]
+  }
+]
+```
+
+This verifies that the generic action path can receive ROS 2 Action feedback.
+
+---
+
+## Action Result
+
+After the action completes, the final ROS result is converted to structured MCP data.
+
+The verified Fibonacci result was:
+
+```json
+{
+  "sequence": [
+    0,
+    1,
+    1,
+    2,
+    3,
+    5,
+    8,
+    13
+  ]
+}
+```
+
+---
+
+## Real ROS 2 Verification
+
+A real ROS 2 Jazzy ActionServer was created:
+
+```text
+/mcp_test/fibonacci
+```
+
+with:
+
+```text
+example_interfaces/action/Fibonacci
+```
+
+ROS 2 discovery confirmed:
+
+```text
+/mcp_test/fibonacci [example_interfaces/action/Fibonacci]
+```
+
+The direct MCP client sent:
+
+```json
+{
+  "action_name": "/mcp_test/fibonacci",
+  "action_type": "example_interfaces/action/Fibonacci",
+  "goal": {
+    "order": 8
+  }
+}
+```
+
+The MCP operation returned:
+
+```text
+error: False
+```
+
+with structured content:
+
+```json
+{
+  "accepted": true,
+  "action": "/mcp_test/fibonacci",
+  "completed": true,
+  "feedback": [
+    {
+      "sequence": [0, 1, 1]
+    },
+    {
+      "sequence": [0, 1, 1, 2]
+    },
+    {
+      "sequence": [0, 1, 1, 2, 3]
+    },
+    {
+      "sequence": [0, 1, 1, 2, 3, 5]
+    },
+    {
+      "sequence": [0, 1, 1, 2, 3, 5, 8]
+    }
+  ],
+  "goal": {
+    "order": 8
+  },
+  "result": {
+    "sequence": [0, 1, 1, 2, 3, 5, 8, 13]
+  },
+  "status": 4,
+  "type": "example_interfaces/action/Fibonacci"
+}
+```
+
+The ActionServer logged:
+
+```text
+Executing Fibonacci order: 8
+Completed Fibonacci: [0, 1, 1, 2, 3, 5, 8, 13]
+```
+
+This verifies the complete action path.
+
+---
+
+## Codex Action Verification
+
+A second independent test was performed through Codex.
+
+Codex was instructed:
+
+```text
+Use only ros2_mcp.
+
+Send a goal to the ROS 2 action:
+
+/mcp_test/fibonacci
+
+using:
+
+example_interfaces/action/Fibonacci
+
+with goal:
+
+{"order": 8}
+
+Wait for the result and show it to me.
+
+Do not use shell commands.
+Do not modify files.
+Do not use ros2_dev_mcp.
+```
+
+Codex selected:
+
+```text
+ros2_mcp.send_action_goal
+```
+
+The returned result was:
+
+```json
+{
+  "action": "/mcp_test/fibonacci",
+  "type": "example_interfaces/action/Fibonacci",
+  "goal": {
+    "order": 8
+  },
+  "accepted": true,
+  "status": 4,
+  "result": {
+    "sequence": [
+      0,
+      1,
+      1,
+      2,
+      3,
+      5,
+      8,
+      13
+    ]
+  },
+  "feedback": [],
+  "completed": true
+}
+```
+
+Codex reported:
+
+```text
+Goal accepted and completed successfully.
+```
+
+with:
+
+```json
+{
+  "sequence": [0, 1, 1, 2, 3, 5, 8, 13]
+}
+```
+
+The ROS ActionServer independently logged the completed sequence.
+
+This verifies:
+
+```text
+Natural-language instruction
+        |
+        v
+Codex
+        |
+        v
+ros2_mcp.send_action_goal
+        |
+        v
+RuntimeService
+        |
+        v
+RosAdapter
+        |
+        v
+JazzyRosAdapter
+        |
+        v
+rclpy ActionClient
+        |
+        v
+ROS 2 ActionServer
+        |
+        v
+Result
+```
+
+---
+
+# Tool Annotations
+
+Runtime interaction tools are write operations.
+
+They are not marked read-only.
+
+For operations such as:
+
+```text
+publish_topic
+call_service
+set_parameter
+send_action_goal
+```
+
+the important semantic distinction is that invoking them can affect a running ROS 2 system.
+
+They should therefore not be treated as equivalent to inspection operations such as:
+
+```text
+list_nodes
+list_topics
+topic_info
+node_info
+get_parameter
+```
+
+Repeated calls can also produce repeated effects.
+
+For example:
+
+```text
+publish_topic
+```
+
+may cause the same command message to be processed multiple times.
+
+Similarly:
+
+```text
+call_service
+send_action_goal
+```
+
+may trigger repeated runtime operations.
+
+---
+
+# Runtime Verification
+
+## Existing Tests
+
+After implementing the Phase 6 runtime interaction operations, the existing runtime test suite continued to pass.
+
+Verified result:
+
+```text
+........ [100%]
+8 passed
+```
+
+This confirms that the controlled runtime interaction additions did not break the existing functionality covered by the runtime tests.
+
+---
+
+# MCP Tool Inventory
+
+After the Action implementation, the real MCP server was queried for its registered tools.
+
+The verification explicitly confirmed:
+
+```text
+publish_topic: True
+call_service: True
+set_parameter: True
+send_action_goal: True
+```
+
+The runtime MCP tool inventory was:
+
+```text
+call_service
+get_parameter
+list_nodes
+list_parameters
+list_services
+list_topics
+node_info
+publish_topic
+read_topic
+send_action_goal
+service_info
+set_parameter
+topic_info
+```
+
+This gives `ros2_mcp` thirteen currently registered runtime tools.
+
+---
+
+# Current Runtime Tool Set
+
+## Read-Only Runtime Operations
+
+```text
+list_nodes
+list_topics
+topic_info
+read_topic
+node_info
+list_parameters
+get_parameter
+list_services
+service_info
+```
+
+These operations inspect a running ROS 2 system without intentionally changing its state.
+
+---
+
+## Controlled Runtime Interaction
+
+```text
+publish_topic
+call_service
+set_parameter
+send_action_goal
+```
+
+These operations can affect the running ROS 2 system.
+
+The distinction between inspection and interaction is intentional.
 
 ---
 
 # Runtime and Development MCP Separation
 
-The Codex verification also demonstrates the architectural separation between the two MCP servers.
+The completed tests demonstrate the architectural separation between the two MCP servers.
 
 Runtime operations:
 
@@ -870,70 +1566,94 @@ ros2_dev_mcp
 ROS 2 Project Workspace
 ```
 
-`publish_topic` belongs exclusively to:
+Runtime tools such as:
+
+```text
+publish_topic
+call_service
+set_parameter
+send_action_goal
+```
+
+belong exclusively to:
 
 ```text
 ros2_mcp
 ```
 
-It does not belong to:
+They do not belong to:
 
 ```text
 ros2_dev_mcp
 ```
 
-This boundary should remain intact as both projects grow.
+Development tools such as:
+
+```text
+create_workspace
+create_package
+create_node
+build_project
+run_tests
+```
+
+belong to `ros2_dev_mcp`.
+
+This boundary prevents runtime interaction and software-development responsibilities from becoming mixed again.
 
 ---
 
-# Current Runtime Tool Set
+# Codex Integration
 
-After Phase 6 Step 1, `ros2_mcp` provides the following runtime capabilities.
+`ros2_mcp` is registered with Codex as a separate MCP server.
 
-## Read-Only Operations
+Conceptually:
 
 ```text
-list_nodes
-list_topics
-topic_info
-read_topic
-node_info
-list_parameters
-get_parameter
-list_services
-service_info
+Codex
+   |
+   +--> ros2_mcp
+   |
+   +--> ros2_dev_mcp
 ```
 
-## Controlled Write Operations
+The two MCP servers can be independently selected through natural-language instructions.
+
+For runtime operations, Codex can be explicitly instructed:
+
+```text
+Use only ros2_mcp.
+```
+
+Tests confirmed that Codex correctly selected the requested runtime tools without requiring shell commands.
+
+The verified tools include:
 
 ```text
 publish_topic
+call_service
+set_parameter
+send_action_goal
 ```
-
-The distinction between inspection and interaction is intentional.
 
 ---
 
 # Safety Model
 
-Introducing write operations changes the role of the runtime MCP server.
+Phase 6 changes `ros2_mcp` from a primarily observational interface into an interface capable of affecting a running ROS 2 system.
 
-Earlier runtime operations primarily inspected ROS 2 state.
+This makes the safety boundary more important.
 
-Phase 6 can actively affect a running ROS 2 graph.
-
-Write operations must therefore remain explicit and narrowly scoped.
-
-Preferred architecture:
+The preferred model remains:
 
 ```text
 MCP Client
         |
         v
-explicit MCP operation
+Explicit MCP Operation
         |
         v
-validated arguments
+Structured Arguments
         |
         v
 RuntimeService
@@ -942,10 +1662,10 @@ RuntimeService
 RosAdapter
         |
         v
-controlled ROS operation
+Controlled ROS Operation
 ```
 
-The runtime MCP should avoid exposing unrestricted shell execution such as:
+The project intentionally avoids exposing:
 
 ```text
 MCP Client
@@ -957,15 +1677,21 @@ arbitrary shell command
 ros2 ...
 ```
 
-Explicit MCP operations provide an API surface that can be validated, tested, documented, and restricted.
+Explicit MCP operations provide an API surface that can be:
+
+```text
+validated
+tested
+documented
+restricted
+extended incrementally
+```
 
 ---
 
 ## Physical Runtime Safety
 
-A ROS 2 topic publication is not automatically harmless.
-
-The meaning of a message depends on the target topic and receiving nodes.
+A generic ROS operation is not automatically physically harmless.
 
 For example:
 
@@ -973,91 +1699,108 @@ For example:
 geometry_msgs/msg/Twist
 ```
 
-published to a robot velocity command topic could cause physical robot motion.
+published to a robot velocity topic could cause physical motion.
 
-Therefore:
+Similarly:
 
 ```text
-destructive_hint = false
+call_service
 ```
 
-does not mean that every possible publication is physically harmless.
+could trigger a hardware-related service.
 
-It describes the generic MCP operation itself rather than the semantics of every possible target topic.
+A parameter change could modify controller or node behavior.
 
-Robot-specific MCP servers and future physical control operations should introduce additional safety policies where appropriate.
+An Action goal could start a longer-running robot operation.
+
+Therefore the generic runtime MCP should remain distinct from future robot-specific control policies.
+
+Specialized servers can later introduce additional domain-specific safety boundaries.
+
+Examples include:
+
+```text
+ros2_control_mcp
+nav2_mcp
+moveit2_mcp
+```
 
 ---
 
 # Current Limitations
 
-The first `publish_topic` implementation intentionally has a limited scope.
+The Phase 6 implementation intentionally remains compact.
 
 Current limitations include:
 
-- one publication per MCP call
-- temporary publisher lifecycle
-- no persistent publisher registry
-- no streaming publication
+- no arbitrary ROS CLI execution
+- no arbitrary shell execution
+- no persistent dynamic publisher registry
+- no streaming publication interface
 - no configurable publication rate
 - no configurable QoS through the MCP interface
 - no topic allowlist yet
+- no service allowlist yet
+- no action allowlist yet
 - no message-type allowlist yet
-- no robot-specific safety policy yet
-- no acknowledgement that a subscriber processed the message
-- no ROS 2 Action support yet
+- no robot-specific physical safety policy yet
+- no subscriber processing acknowledgement
+- no persistent ActionClient registry
+- no action cancellation MCP operation yet
+- no separate long-running asynchronous action session model yet
 
-These limitations keep the first controlled write capability small and understandable.
+These limitations are intentional.
 
-They can be addressed incrementally when required.
-
----
-
-# Why `publish_topic` Is Important
-
-`publish_topic` changes `ros2_mcp` from a purely observational interface into a controlled ROS 2 interaction layer.
-
-Before this step, an MCP client could inspect:
-
-```text
-nodes
-topics
-services
-parameters
-topic messages
-```
-
-After this step, an MCP client can initiate a ROS 2 runtime operation.
-
-This enables workflows such as:
-
-```text
-inspect ROS graph
-        |
-        v
-understand available interfaces
-        |
-        v
-select an explicit MCP operation
-        |
-        v
-interact with ROS 2
-        |
-        v
-inspect the result
-```
-
-This generic runtime capability provides an important foundation for later ROS 2 integrations.
+The goal of Phase 6 is to establish a small generic runtime interaction layer rather than a complete robot control system.
 
 ---
 
-# Future Specialized MCP Servers
+# Why Actions Matter
 
-Generic runtime capabilities should remain in `ros2_mcp`.
+Adding:
 
-Specialized ROS 2 subsystems can later be implemented as separate MCP servers.
+```text
+send_action_goal
+```
 
-Examples:
+is particularly important for robotics.
+
+Topics are suitable for message streams.
+
+Services are suitable for request/response interactions.
+
+Actions are suitable for longer-running operations.
+
+Conceptually:
+
+```text
+Topic
+    message stream
+
+Service
+    request -> response
+
+Action
+    goal -> feedback -> result
+```
+
+Many higher-level robotics operations naturally fit the Action model.
+
+This makes the generic action capability an important foundation for later specialized MCP servers.
+
+---
+
+# Foundation for Specialized MCP Servers
+
+Generic ROS 2 runtime capabilities should remain in:
+
+```text
+ros2_mcp
+```
+
+Specialized subsystem behavior should later be implemented separately.
+
+Planned examples include:
 
 ```text
 ros2_control_mcp
@@ -1068,25 +1811,27 @@ moveit2_mcp
 Conceptually:
 
 ```text
-                    MCP Client
-                        |
-        +---------------+----------------+
-        |               |                |
-        v               v                v
-    ros2_mcp       ros2_dev_mcp    Specialized MCPs
-        |               |                |
-        v               v                +--> ros2_control
- ROS 2 runtime     ROS 2 projects        +--> Nav2
-                                         +--> MoveIt 2
+                         MCP Client
+                             |
+          +------------------+------------------+
+          |                  |                  |
+          v                  v                  v
+      ros2_mcp          ros2_dev_mcp      Specialized MCPs
+          |                  |                  |
+          v                  v                  +--> ros2_control
+   ROS 2 runtime       ROS 2 projects           +--> Nav2
+                                                +--> MoveIt 2
 ```
 
-This prevents the generic runtime MCP from becoming a monolithic server containing every ROS 2 subsystem.
+The generic `ros2_mcp` provides foundational runtime primitives.
+
+The specialized servers can build higher-level semantics and safety policies on top of ROS 2 subsystem APIs without turning `ros2_mcp` into a monolithic server.
 
 ---
 
-# Files Modified for Step 1
+# Files Modified in Phase 6
 
-Phase 6 Step 1 modifies:
+The controlled runtime interaction implementation modifies the existing runtime layers:
 
 ```text
 src/ros2_mcp/ros/adapter.py
@@ -1099,7 +1844,34 @@ tests/unit/test_runtime_service.py
 Phase 6 documentation is maintained in:
 
 ```text
-docs/README_PHASE_6_RUNTIME_INTERACTION.md
+docs/README_PHASE_6.md
+```
+
+No development-project functionality is introduced into the runtime MCP.
+
+---
+
+# Phase 6 Verification Matrix
+
+The implemented capabilities have been verified as follows:
+
+```text
+Capability          Runtime MCP     Real ROS 2     Codex
+---------------------------------------------------------
+publish_topic       PASS            PASS           PASS
+call_service        PASS            PASS           PASS
+set_parameter       PASS            PASS           PASS
+send_action_goal    PASS            PASS           PASS
+```
+
+The Action implementation additionally verified:
+
+```text
+Goal submission     PASS
+Goal acceptance     PASS
+Feedback handling   PASS
+Result handling     PASS
+Dynamic type        PASS
 ```
 
 ---
@@ -1112,29 +1884,61 @@ Current status:
 Phase 6 – Controlled ROS 2 Runtime Interaction
 
 [COMPLETE] Step 1 – publish_topic
-[PLANNED]  Step 2 – call_service
-[PLANNED]  Step 3 – set_parameter
+[COMPLETE] Step 2 – call_service
+[COMPLETE] Step 3 – set_parameter
+[COMPLETE] Step 4 – send_action_goal
 ```
 
-The scope is intentionally expanded one controlled operation at a time.
+The four core generic interaction mechanisms are now implemented:
+
+```text
+Topic
+Service
+Parameter
+Action
+```
 
 ---
 
-# Next Step
+# Phase 6 Result
 
-The next planned capability is:
+Phase 6 establishes a generic controlled interaction layer between MCP clients and a running ROS 2 system.
 
-```text
-call_service
-```
-
-The intended architecture is:
+Before Phase 6:
 
 ```text
 MCP Client
     |
     v
-call_service
+ros2_mcp
+    |
+    v
+Inspect ROS 2
+```
+
+After Phase 6:
+
+```text
+MCP Client
+    |
+    v
+ros2_mcp
+    |
+    +--> inspect ROS 2
+    |
+    +--> publish topic messages
+    |
+    +--> call services
+    |
+    +--> change parameters
+    |
+    +--> send action goals
+```
+
+All four interaction mechanisms preserve the same architectural boundary:
+
+```text
+MCP Tool
     |
     v
 RuntimeService
@@ -1146,72 +1950,22 @@ RosAdapter
 JazzyRosAdapter
     |
     v
-Dynamic ROS Service Client
+rclpy
     |
     v
-ROS 2 Service Server
+ROS 2
 ```
 
-The implementation should dynamically resolve the ROS service type, construct the request from structured MCP input, call the service, and return the response as structured data.
+The implementation has been verified against a real ROS 2 Jazzy environment and through Codex as an external MCP client.
 
-Example future operation:
+Codex successfully performed runtime operations using only `ros2_mcp`, without shell commands, direct filesystem operations, or `ros2_dev_mcp`.
+
+Phase 6 therefore provides the generic ROS 2 interaction foundation required before introducing specialized robotics MCP servers such as:
 
 ```text
-call_service(
-    service_name="/example_service",
-    service_type="std_srvs/srv/SetBool",
-    request={
-        "data": true
-    }
-)
+ros2_control_mcp
+nav2_mcp
+moveit2_mcp
 ```
 
-The service implementation should follow the same principles established by `publish_topic`:
 
-- explicit MCP operation
-- structured arguments
-- no arbitrary shell execution
-- RuntimeService delegation
-- RosAdapter abstraction
-- Jazzy-specific implementation behind the adapter
-- controlled error handling
-- real ROS 2 verification
-- Codex verification
-
----
-
-# Phase 6 Status
-
-Phase 6 is currently in progress.
-
-The first controlled ROS 2 write operation has been implemented and successfully verified:
-
-```text
-publish_topic
-```
-
-Verification has been completed at three levels:
-
-```text
-Existing Runtime Tests
-        |
-        v
-Direct MCP Client Test
-        |
-        v
-Codex -> ros2_mcp -> ROS 2
-```
-
-The real ROS 2 Jazzy runtime received both test publications successfully.
-
-The next implementation step is:
-
-```text
-call_service
-```
-
-After `call_service`, the planned next controlled runtime operation is:
-
-```text
-set_parameter
-```

@@ -70,3 +70,48 @@ class RuntimeService:
             message_type=message_type,
             message=message,
         )
+
+    def call_service(
+        self,
+        service_name: str,
+        service_type: str,
+        request: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Call one ROS service and return its response."""
+        return self._ros_adapter.call_service(
+            service_name=service_name,
+            service_type=service_type,
+            request=request,
+            timeout_sec=timeout_sec,
+        )
+
+    def set_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+        value: object,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Set one parameter on a ROS node."""
+        return self._ros_adapter.set_parameter(
+            node_name=node_name,
+            parameter_name=parameter_name,
+            value=value,
+            timeout_sec=timeout_sec,
+        )
+
+    def send_action_goal(
+        self,
+        action_name: str,
+        action_type: str,
+        goal: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Send one ROS action goal and return its result."""
+        return self._ros_adapter.send_action_goal(
+            action_name=action_name,
+            action_type=action_type,
+            goal=goal,
+            timeout_sec=timeout_sec,
+        )

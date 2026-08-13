@@ -69,3 +69,36 @@ class RosAdapter(ABC):
     ) -> dict[str, object]:
         """Publish one message to a ROS topic."""
         raise NotImplementedError
+
+    @abstractmethod
+    def call_service(
+        self,
+        service_name: str,
+        service_type: str,
+        request: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Call one ROS service and return its response."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+        value: object,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Set one parameter on a ROS node."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def send_action_goal(
+        self,
+        action_name: str,
+        action_type: str,
+        goal: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Send one ROS action goal and wait for its result."""
+        raise NotImplementedError

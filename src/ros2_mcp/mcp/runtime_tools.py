@@ -165,3 +165,75 @@ def register_runtime_tools(server: MCPServer) -> None:
             message_type=message_type,
             message=message,
         )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=False,
+            open_world_hint=False,
+        )
+    )
+    def call_service(
+        service_name: str,
+        service_type: str,
+        request: dict[str, object],
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Call one ROS 2 service."""
+        app_context = ctx.request_context.lifespan_context
+
+        return app_context.runtime_service.call_service(
+            service_name=service_name,
+            service_type=service_type,
+            request=request,
+            timeout_sec=1.0,
+        )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def set_parameter(
+        node_name: str,
+        parameter_name: str,
+        value: object,
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Set one parameter on a ROS 2 node."""
+        app_context = ctx.request_context.lifespan_context
+
+        return app_context.runtime_service.set_parameter(
+            node_name=node_name,
+            parameter_name=parameter_name,
+            value=value,
+            timeout_sec=1.0,
+        )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=False,
+            open_world_hint=False,
+        )
+    )
+    def send_action_goal(
+        action_name: str,
+        action_type: str,
+        goal: dict[str, object],
+        ctx: Context["AppContext"],
+    ) -> dict[str, object]:
+        """Send one ROS 2 action goal and wait for its result."""
+        app_context = ctx.request_context.lifespan_context
+
+        return app_context.runtime_service.send_action_goal(
+            action_name=action_name,
+            action_type=action_type,
+            goal=goal,
+            timeout_sec=5.0,
+        )

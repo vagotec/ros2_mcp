@@ -510,3 +510,334 @@ class JazzyRosAdapter(RosAdapter):
             }
         finally:
             self._node.destroy_publisher(publisher)
+
+    def call_service(
+        self,
+        service_name: str,
+        service_type: str,
+        request: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Call one dynamically typed ROS service."""
+        from rosidl_runtime_py.convert import message_to_ordereddict
+        from rosidl_runtime_py.set_message import set_message_fields
+        from rosidl_runtime_py.utilities import get_service
+
+        normalized_service = service_name.strip()
+        normalized_type = service_type.strip()
+
+        if not normalized_service:
+            raise ValueError("Service name must not be empty.")
+
+        if not normalized_service.startswith("/"):
+            normalized_service = f"/{normalized_service}"
+
+        if not normalized_type:
+            raise ValueError("Service type must not be empty.")
+
+        if not isinstance(request, dict):
+            raise TypeError("Service request must be a dictionary.")
+
+        if timeout_sec <= 0:
+            raise ValueError("Service timeout must be greater than zero.")
+
+        try:
+            ros_service_type = get_service(normalized_type)
+        except (AttributeError, ImportError, ModuleNotFoundError, ValueError) as exc:
+            raise ValueError(
+                f"Unknown ROS service type: {normalized_type}"
+            ) from exc
+
+        ros_request = ros_service_type.Request()
+
+        try:
+            set_message_fields(
+                ros_request,
+                request,
+            )
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Invalid request for ROS service type {normalized_type}: {exc}"
+            ) from exc
+
+        client = self._node.create_client(
+            ros_service_type,
+            normalized_service,
+        )
+
+        try:
+            if not client.wait_for_service(timeout_sec=timeout_sec):
+                raise LookupError(
+                    f"ROS service not available: {normalized_service}"
+                )
+
+            future = client.call_async(ros_request)
+
+            self._executor.spin_until_future_complete(
+                future,
+                timeout_sec=timeout_sec,
+            )
+
+            if not future.done():
+                raise TimeoutError(
+                    f"Timed out calling ROS service: {normalized_service}"
+                )
+
+            response = future.result()
+
+            if response is None:
+                raise RuntimeError(
+                    f"ROS service call failed: {normalized_service}"
+                )
+
+            return {
+                "service": normalized_service,
+                "type": normalized_type,
+                "request": message_to_ordereddict(ros_request),
+                "response": message_to_ordereddict(response),
+                "completed": True,
+            }
+        finally:
+            self._node.destroy_client(client)
+
+    def set_parameter(
+        self,
+        node_name: str,
+        parameter_name: str,
+        value: object,
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Set one parameter on a discovered ROS node."""
+        from rcl_interfaces.srv import SetParameters
+        from rclpy.parameter import Parameter
+
+        normalized_parameter = parameter_name.strip()
+
+        if not normalized_parameter:
+            raise ValueError("Parameter name must not be empty.")
+
+        if timeout_sec <= 0:
+            raise ValueError("Parameter timeout must be greater than zero.")
+
+        base_name, namespace = self._normalize_node_name(node_name)
+
+        if not self._wait_for_node(
+            base_name=base_name,
+            namespace=namespace,
+            timeout_sec=timeout_sec,
+        ):
+            raise LookupError(f"ROS node not found: {node_name}")
+
+        service_name = (
+            f"{namespace.rstrip('/')}/{base_name}/set_parameters"
+        )
+
+        client = self._node.create_client(
+            SetParameters,
+            service_name,
+        )
+
+        try:
+            if not client.wait_for_service(timeout_sec=timeout_sec):
+                raise LookupError(
+                    f"Parameter service not available: {service_name}"
+                )
+
+            try:
+                parameter = Parameter(
+                    normalized_parameter,
+                    value=value,
+                )
+                parameter_message = parameter.to_parameter_msg()
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid ROS parameter value for "
+                    f"{normalized_parameter}: {exc}"
+                ) from exc
+
+            request = SetParameters.Request()
+            request.parameters = [parameter_message]
+
+            future = client.call_async(request)
+
+            self._executor.spin_until_future_complete(
+                future,
+                timeout_sec=timeout_sec,
+            )
+
+            if not future.done():
+                raise TimeoutError(
+                    f"Timed out setting parameter "
+                    f"{normalized_parameter} on {node_name}"
+                )
+
+            response = future.result()
+
+            if response is None or not response.results:
+                raise RuntimeError(
+                    f"Parameter update failed: {normalized_parameter}"
+                )
+
+            result = response.results[0]
+
+            return {
+                "node": node_name,
+                "parameter": normalized_parameter,
+                "value": value,
+                "successful": result.successful,
+                "reason": result.reason,
+            }
+        finally:
+            self._node.destroy_client(client)
+
+    def send_action_goal(
+        self,
+        action_name: str,
+        action_type: str,
+        goal: dict[str, object],
+        timeout_sec: float,
+    ) -> dict[str, object]:
+        """Send one dynamically typed ROS action goal and wait for its result."""
+        from rclpy.action import ActionClient
+        from rosidl_runtime_py.set_message import set_message_fields
+        from rosidl_runtime_py.utilities import get_action
+
+        normalized_action = action_name.strip()
+        normalized_type = action_type.strip()
+
+        if not normalized_action:
+            raise ValueError("Action name must not be empty.")
+
+        if not normalized_action.startswith("/"):
+            normalized_action = f"/{normalized_action}"
+
+        if not normalized_type:
+            raise ValueError("Action type must not be empty.")
+
+        if not isinstance(goal, dict):
+            raise TypeError("Action goal must be a dictionary.")
+
+        if timeout_sec <= 0:
+            raise ValueError("Action timeout must be greater than zero.")
+
+        try:
+            ros_action_type = get_action(normalized_type)
+        except (
+            AttributeError,
+            ImportError,
+            ModuleNotFoundError,
+            ValueError,
+        ) as exc:
+            raise ValueError(
+                f"Unknown ROS action type: {normalized_type}"
+            ) from exc
+
+        ros_goal = ros_action_type.Goal()
+
+        try:
+            set_message_fields(
+                ros_goal,
+                goal,
+            )
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Invalid goal for ROS action type "
+                f"{normalized_type}: {exc}"
+            ) from exc
+
+        feedback_messages: list[dict[str, object]] = []
+
+        def feedback_callback(feedback_message: object) -> None:
+            """Collect structured ROS action feedback."""
+            feedback_messages.append(
+                message_to_ordereddict(feedback_message.feedback)
+            )
+
+        action_client = ActionClient(
+            self._node,
+            ros_action_type,
+            normalized_action,
+        )
+
+        try:
+            if not action_client.wait_for_server(
+                timeout_sec=timeout_sec
+            ):
+                raise LookupError(
+                    f"ROS action server not available: "
+                    f"{normalized_action}"
+                )
+
+            goal_future = action_client.send_goal_async(
+                ros_goal,
+                feedback_callback=feedback_callback,
+            )
+
+            self._executor.spin_until_future_complete(
+                goal_future,
+                timeout_sec=timeout_sec,
+            )
+
+            if not goal_future.done():
+                raise TimeoutError(
+                    f"Timed out sending ROS action goal: "
+                    f"{normalized_action}"
+                )
+
+            goal_handle = goal_future.result()
+
+            if goal_handle is None:
+                raise RuntimeError(
+                    f"ROS action goal failed: {normalized_action}"
+                )
+
+            if not goal_handle.accepted:
+                return {
+                    "action": normalized_action,
+                    "type": normalized_type,
+                    "goal": message_to_ordereddict(ros_goal),
+                    "accepted": False,
+                    "status": None,
+                    "result": None,
+                    "feedback": feedback_messages,
+                    "completed": False,
+                }
+
+            result_future = goal_handle.get_result_async()
+
+            self._executor.spin_until_future_complete(
+                result_future,
+                timeout_sec=timeout_sec,
+            )
+
+            if not result_future.done():
+                raise TimeoutError(
+                    f"Timed out waiting for ROS action result: "
+                    f"{normalized_action}"
+                )
+
+            result_response = result_future.result()
+
+            if result_response is None:
+                raise RuntimeError(
+                    f"ROS action returned no result: "
+                    f"{normalized_action}"
+                )
+
+            return {
+                "action": normalized_action,
+                "type": normalized_type,
+                "goal": message_to_ordereddict(ros_goal),
+                "accepted": True,
+                "status": result_response.status,
+                "result": message_to_ordereddict(
+                    result_response.result
+                ),
+                "feedback": feedback_messages,
+                "completed": True,
+            }
+        finally:
+            destroy = getattr(action_client, "destroy", None)
+
+            if callable(destroy):
+                destroy()
