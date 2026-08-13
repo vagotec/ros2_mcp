@@ -30,11 +30,15 @@ and has been verified through:
 
 ```text
 Python syntax checks
-unit and regression tests
+20 unit and integration tests
 real ROS 2 Jazzy integration tests
 direct MCP client tests
-Codex end-to-end tests
+isolated wheel installation tests
+installed MCP stdio tests
+Codex end-to-end tests against source and installed packages
 ```
+
+Phase 8 additionally verifies that `ros2_mcp` can be built, installed, configured, and started outside the source repository.
 
 ---
 
@@ -1516,17 +1520,31 @@ Safety implementation:
 src/ros2_mcp/ros/jazzy/safety.py
 ```
 
-Configuration:
+Packaged default configuration:
+
+```text
+src/ros2_mcp/config/default.toml
+```
+
+Configuration loader and resolver:
+
+```text
+src/ros2_mcp/config/settings.py
+```
+
+Optional external deployment configuration can be selected with:
+
+```text
+ROS2_MCP_CONFIG
+```
+
+The repository-level:
 
 ```text
 config/ros2_mcp.toml
 ```
 
-Configuration loader:
-
-```text
-src/ros2_mcp/config/settings.py
-```
+can still be used as an explicit external configuration, but runtime code no longer depends on the current working directory to find it.
 
 ---
 
@@ -1691,6 +1709,266 @@ dry-run support
 
 ---
 
+# Phase 8 Packaging and Deployment Readiness
+
+Phase 8 verifies that `ros2_mcp` is no longer dependent on execution from the source repository.
+
+The validated deployment path is:
+
+```text
+source tree
+    |
+    v
+uv build
+    |
+    v
+wheel
+    |
+    v
+isolated virtual environment
+    |
+    v
+installed ros2-mcp CLI
+    |
+    v
+packaged default.toml
+    |
+    v
+MCP stdio
+    |
+    v
+Codex / MCP Client
+    |
+    v
+ROS 2 Jazzy
+```
+
+Verified Phase 8 properties:
+
+```text
+centralized configuration resolution
+packaged default configuration
+ROS2_MCP_CONFIG override
+invalid explicit configuration rejection
+wheel and sdist build
+isolated wheel installation
+execution outside repository
+installed CLI verification
+real installed MCP stdio
+46-tool inventory after installation
+installed safety configuration
+installed runtime health
+Codex verification against installed package
+20 permanent tests
+```
+
+---
+
+# Configuration Resolution
+
+Configuration lookup is centralized in:
+
+```text
+src/ros2_mcp/config/settings.py
+```
+
+The precedence is:
+
+```text
+explicit configuration path
+            |
+            v
+     ROS2_MCP_CONFIG
+            |
+            v
+  packaged default.toml
+```
+
+The packaged default is:
+
+```text
+src/ros2_mcp/config/default.toml
+```
+
+An explicitly configured file must exist.
+
+Invalid explicit configuration does not silently fall back to the packaged default.
+
+Example external configuration:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+export ROS2_MCP_CONFIG="$PWD/config/ros2_mcp.toml"
+
+ros2-mcp
+```
+
+---
+
+# Build Distribution Packages
+
+The project uses `uv_build`.
+
+Build wheel and source distribution:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+rm -rf dist
+
+uv build
+
+find dist \
+  -maxdepth 1 \
+  -type f \
+  -printf '%f\n' \
+  | sort
+```
+
+Expected artifacts:
+
+```text
+*.whl
+*.tar.gz
+```
+
+The wheel contains:
+
+```text
+ros2_mcp/config/default.toml
+```
+
+---
+
+# Isolated Wheel Installation
+
+A clean virtual environment can verify installation independently of the source checkout.
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+rm -rf /tmp/ros2_mcp_phase_8_test_venv
+
+python -m venv \
+  --system-site-packages \
+  /tmp/ros2_mcp_phase_8_test_venv
+
+/tmp/ros2_mcp_phase_8_test_venv/bin/pip install \
+  dist/*.whl
+```
+
+`--system-site-packages` allows the isolated Python environment to access the ROS 2 Jazzy Python installation, including `rclpy`.
+
+Verify the installed package from outside the repository:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+cd /tmp
+
+/tmp/ros2_mcp_phase_8_test_venv/bin/python - <<'PY'
+import ros2_mcp
+import rclpy
+
+from ros2_mcp.config.settings import (
+    load_settings,
+    resolve_config_path,
+)
+
+config_path = resolve_config_path()
+
+print("ros2_mcp:", ros2_mcp.__file__)
+print("rclpy:", rclpy.__file__)
+print("config:", config_path)
+print("settings:", load_settings(config_path))
+PY
+
+cd ~/projects/robotics/ros2_mcp
+```
+
+The configuration path must resolve into the installed package rather than the project repository.
+
+---
+
+# Installed MCP stdio Verification
+
+The installed package was verified through the real MCP stdio protocol.
+
+Expected installed tool inventory:
+
+```text
+46 tools
+```
+
+Representative installed operations verified:
+
+```text
+list_nodes
+list_topics
+list_actions
+interface_info
+list_interfaces
+get_runtime_health
+get_safety_guardrails
+start_ros_process with dry_run=true
+```
+
+The installed server can execute from `/tmp` and does not require the source repository as its working directory.
+
+---
+
+# Permanent Phase 8 Tests
+
+Phase 8 adds:
+
+```text
+tests/unit/test_settings.py
+tests/integration/test_server_lifespan.py
+```
+
+Configuration tests verify:
+
+```text
+packaged default resolution
+explicit configuration precedence
+ROS2_MCP_CONFIG override
+missing explicit configuration rejection
+missing environment configuration rejection
+default settings loading
+custom settings loading
+invalid positive-limit validation
+```
+
+The server lifespan integration test verifies:
+
+```text
+create_server
+configuration loading
+runtime initialization
+46 MCP tools
+get_safety_guardrails
+get_runtime_health
+start_ros_process with dry_run=true
+clean shutdown
+```
+
+Final Phase 8 test count:
+
+```text
+20 passed
+```
+
+---
+
 # Development Environment
 
 Current development environment:
@@ -1783,12 +2061,12 @@ source /opt/ros/jazzy/setup.bash
 pytest -q
 ```
 
-Final verified Phase 7 result:
+Final verified Phase 8 result:
 
 ```text
-...........                                                      [100%]
+....................                                                     [100%]
 
-11 passed
+20 passed
 ```
 
 ---
@@ -1807,7 +2085,7 @@ pytest -q
 Expected:
 
 ```text
-11 passed
+20 passed
 ```
 
 ---
@@ -1929,7 +2207,6 @@ from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
 
 
 adapter = JazzyRosAdapter()
-
 try:
     pprint(
         adapter.get_safety_guardrails()
@@ -1987,13 +2264,88 @@ Inside Codex:
 
 ---
 
+# Codex Installed-Package Verification
+
+Phase 8 also verifies Codex against an isolated installed wheel.
+
+A temporary MCP registration can be created without replacing the development registration:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+codex mcp remove ros2_mcp_installed 2>/dev/null || true
+
+codex mcp add ros2_mcp_installed \
+  --env ROS_DOMAIN_ID=30 \
+  --env RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
+  -- \
+  bash -lc \
+  'source /opt/ros/jazzy/setup.bash && exec /tmp/ros2_mcp_phase_8_3_final_venv/bin/ros2-mcp'
+
+codex mcp get ros2_mcp_installed
+codex mcp list
+```
+
+Start Codex:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+codex
+```
+
+The final installed-package verification used only:
+
+```text
+ros2_mcp_installed
+```
+
+and successfully exercised:
+
+```text
+list_nodes
+list_topics
+list_actions
+interface_info
+list_interfaces
+get_runtime_health
+get_safety_guardrails
+start_ros_process with dry_run=true
+```
+
+Final result:
+
+```text
+all requested operations succeeded
+no real ROS process started
+no project file modified
+```
+
+The temporary verification registration can be removed afterwards:
+
+```bash
+cd ~/projects/robotics/ros2_mcp
+source .venv/bin/activate
+source /opt/ros/jazzy/setup.bash
+
+codex mcp remove ros2_mcp_installed
+codex mcp list
+```
+
+The `/tmp` installation is a test environment only and is not intended as a permanent deployment location.
+
+---
+
 # Codex Usage Rule
 
 For runtime-only tests, Codex can be explicitly instructed:
 
 ```text
 Use only ros2_mcp.
-
 Do not use shell commands.
 Do not modify files.
 Do not use ros2_dev_mcp.
@@ -2055,7 +2407,6 @@ Codex was instructed:
 
 ```text
 Use only ros2_mcp.
-
 Perform the final verification of the three new ROS 2 core tools.
 
 1. List all currently discovered ROS 2 actions.
@@ -2237,12 +2588,15 @@ docs/
 ├── README_PHASE_4.md
 ├── README_PHASE_5.md
 ├── README_PHASE_6.md
-└── README_PHASE_7.md
+├── README_PHASE_7.md
+└── README_PHASE_8.md
 ```
 
 Phase 6 documents the controlled interaction foundation.
 
 Phase 7 documents the advanced runtime, observability, safety, management, QoS, modularization, and final integration work.
+
+Phase 8 documents configuration resolution, packaged defaults, wheel installation, installed MCP stdio operation, Codex verification against the installed package, and permanent packaging/configuration regression tests.
 
 ---
 
@@ -2304,8 +2658,16 @@ Dry-run validation             ✅
 Executor serialization         ✅
 
 Codex MCP integration          ✅
+Installed-package Codex test   ✅
 Runtime / Dev separation       ✅
 Real ROS 2 verification        ✅
+
+Central config resolution      ✅
+Packaged default config        ✅
+Wheel + sdist build            ✅
+Isolated wheel installation    ✅
+Installed MCP stdio            ✅
+Server lifespan regression     ✅
 ```
 
 ---
@@ -2316,8 +2678,8 @@ Real ROS 2 verification        ✅
 MCP tools:
 46
 
-Unit/regression tests:
-11 passed
+Unit/integration/regression tests:
+20 passed
 
 Python syntax:
 PASS
@@ -2325,7 +2687,22 @@ PASS
 Real ROS 2 integration:
 PASS
 
-Codex integration:
+Wheel build:
+PASS
+
+Isolated wheel installation:
+PASS
+
+Installed MCP stdio:
+PASS
+
+Packaged default configuration:
+PASS
+
+Codex source integration:
+PASS
+
+Codex installed-package integration:
 PASS
 ```
 
@@ -2623,6 +3000,7 @@ Phase 4   Runtime architecture expansion       ✅
 Phase 5   Extended runtime inspection          ✅
 Phase 6   Controlled runtime interaction       ✅
 Phase 7   Advanced runtime operations          ✅
+Phase 8   Packaging and deployment readiness   ✅
 ```
 
 The generic ROS 2 runtime foundation is now operational.
@@ -2631,9 +3009,15 @@ Final generic runtime status:
 
 ```text
 46 MCP tools
-11 tests passed
+20 tests passed
 real ROS 2 verification passed
-Codex verification passed
+wheel and sdist build passed
+isolated wheel installation passed
+installed MCP stdio verification passed
+Codex source verification passed
+Codex installed-package verification passed
+packaged default configuration enabled
+centralized configuration resolution enabled
 modular Jazzy architecture
 safety guardrails enabled
 ```
@@ -2653,6 +3037,8 @@ source /opt/ros/jazzy/setup.bash
 
 python -m compileall -q src tests
 pytest -q
+pytest --collect-only -q
+git diff --check
 
 git status
 git diff --stat
@@ -2661,7 +3047,7 @@ git diff --stat
 Expected:
 
 ```text
-11 passed
+20 passed
 ```
 
 ---
@@ -2679,16 +3065,18 @@ git status
 git diff --stat
 
 git add \
-  .gitignore \
-  config/ros2_mcp.toml \
-  docs/README_PHASE_7.md \
   README.md \
-  src \
-  tests
+  docs/README_PHASE_8.md \
+  src/ros2_mcp/config/default.toml \
+  src/ros2_mcp/config/settings.py \
+  src/ros2_mcp/ros/jazzy/safety.py \
+  src/ros2_mcp/server.py \
+  tests/integration/test_server_lifespan.py \
+  tests/unit/test_settings.py
 
 git status --short
 
-git commit -m "Complete advanced ROS 2 runtime operations"
+git commit -m "feat: complete ROS 2 MCP packaging and deployment phase 8"
 
 git push origin main
 

@@ -1,0 +1,24 @@
+[runtime]
+read_topic_timeout_sec = 1.0
+
+[safety]
+protected_topics = [
+    "/rosout",
+    "/parameter_events",
+]
+
+protected_services = []
+
+protected_parameters = []
+
+protected_actions = []
+
+allowed_process_packages = []
+
+allowed_launch_packages = []
+
+max_persistent_publishers = 32
+max_managed_processes = 16
+max_managed_launches = 8
+max_bag_recordings = 4
+max_bag_playbacks = 4

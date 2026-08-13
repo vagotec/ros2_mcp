@@ -1,6 +1,7 @@
 """Configuration loading for ROS 2 MCP."""
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import tomllib
 
@@ -72,6 +73,49 @@ def _positive_integer(
 
     return value
 
+
+CONFIG_ENV_VAR = "ROS2_MCP_CONFIG"
+PACKAGED_DEFAULT_CONFIG = Path(__file__).with_name("default.toml")
+
+
+def resolve_config_path(
+    config_path: Path | None = None,
+) -> Path:
+    """Resolve an explicit configuration or the packaged default."""
+    if config_path is not None:
+        resolved = config_path.expanduser().resolve()
+
+        if not resolved.is_file():
+            raise FileNotFoundError(
+                "Explicit ROS 2 MCP configuration file was not found: "
+                f"{resolved}"
+            )
+
+        return resolved
+
+    environment_path = os.environ.get(CONFIG_ENV_VAR)
+
+    if environment_path:
+        resolved = Path(environment_path).expanduser().resolve()
+
+        if not resolved.is_file():
+            raise FileNotFoundError(
+                f"{CONFIG_ENV_VAR} points to a configuration file "
+                f"that does not exist: {resolved}"
+            )
+
+        return resolved
+
+    default_path = PACKAGED_DEFAULT_CONFIG.resolve()
+
+    if default_path.is_file():
+        return default_path
+
+    raise FileNotFoundError(
+        "Packaged ROS 2 MCP default configuration was not found: "
+        f"{default_path}. "
+        f"Set {CONFIG_ENV_VAR} to an explicit configuration file."
+    )
 
 def load_settings(config_path: Path) -> Settings:
     """Load application settings from a TOML configuration file."""

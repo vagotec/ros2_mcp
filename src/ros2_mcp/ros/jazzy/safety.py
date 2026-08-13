@@ -1,11 +1,11 @@
 """Safety helpers for controlled ROS 2 runtime operations."""
 
 import re
-from pathlib import Path
 
 from ros2_mcp.config.settings import (
     SafetySettings,
     load_settings,
+    resolve_config_path,
 )
 
 
@@ -16,11 +16,8 @@ class SafetyMixin:
     """Provide configurable safety checks for runtime operations."""
 
     def _init_safety(self) -> None:
-        """Load the runtime safety policy from project configuration."""
-        project_root = Path(__file__).resolve().parents[4]
-        config_path = project_root / "config" / "ros2_mcp.toml"
-
-        settings = load_settings(config_path)
+        """Load the runtime safety policy from configuration."""
+        settings = load_settings(resolve_config_path())
 
         self._safety_settings: SafetySettings = settings.safety
 

@@ -3,12 +3,15 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from pathlib import Path
 
 from mcp.server import MCPServer
 
 from ros2_mcp.application.runtime.service import RuntimeService
-from ros2_mcp.config.settings import Settings, load_settings
+from ros2_mcp.config.settings import (
+    Settings,
+    load_settings,
+    resolve_config_path,
+)
 from ros2_mcp.mcp.runtime_tools import register_runtime_tools
 from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
 
@@ -27,7 +30,7 @@ async def app_lifespan(
     server: MCPServer,
 ) -> AsyncIterator[AppContext]:
     """Create and clean up ROS 2 runtime resources."""
-    settings = load_settings(Path("config/ros2_mcp.toml"))
+    settings = load_settings(resolve_config_path())
 
     ros_adapter = JazzyRosAdapter()
     runtime_service = RuntimeService(ros_adapter)
