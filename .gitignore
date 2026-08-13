@@ -30,3 +30,5 @@ log/
 
 # Generated MCP demo workspace
 demo_ws/
+
+bags/
