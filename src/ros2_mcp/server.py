@@ -13,6 +13,7 @@ from ros2_mcp.config.settings import (
     resolve_config_path,
 )
 from ros2_mcp.mcp.instructions import SERVER_INSTRUCTIONS
+from ros2_mcp.mcp.prompts import register_prompts
 from ros2_mcp.mcp.runtime_tools import register_runtime_tools
 from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
 
@@ -55,6 +56,7 @@ def create_server() -> MCPServer:
     )
 
     register_runtime_tools(server)
+    register_prompts(server)
 
     return server
 
