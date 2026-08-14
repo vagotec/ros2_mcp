@@ -1,34 +1,33 @@
-# ROS 2 MCP
+**# ROS 2 MCP**
 
 A modular MCP server for inspecting, monitoring, and safely interacting with a running ROS 2 system.
 
-`ros2_mcp` focuses exclusively on ROS 2 runtime interaction.
+\`ros2\_mcp\` focuses exclusively on ROS 2 runtime interaction.
 
 ROS 2 project creation, package generation, build, and test workflows are provided separately by:
 
-```text
-ros2_dev_mcp
-```
+\`\`\`text
+\`\`\`
 
 The project currently targets:
 
-```text
+\`\`\`text
 ROS 2 Jazzy
 Ubuntu 24.04
 Python 3.12
 rclpy
 MCP Python SDK
-```
+\`\`\`
 
 The current implementation exposes:
 
-```text
+\`\`\`text
 46 MCP runtime tools
-```
+\`\`\`
 
 and has been verified through:
 
-```text
+\`\`\`text
 Python syntax checks
 20 unit and integration tests
 real ROS 2 Jazzy integration tests
@@ -36,59 +35,59 @@ direct MCP client tests
 isolated wheel installation tests
 installed MCP stdio tests
 Codex end-to-end tests against source and installed packages
-```
+\`\`\`
 
-Phase 8 additionally verifies that `ros2_mcp` can be built, installed, configured, and started outside the source repository.
+Phase 8 additionally verifies that \`ros2\_mcp\` can be built, installed, configured, and started outside the source repository.
 
----
+**---**
 
-# Goals
+**# Goals**
 
 The project provides a clean MCP interface to a running ROS 2 system.
 
 Main goals:
 
-- Inspect the ROS 2 graph
-- Discover nodes, topics, services, actions, parameters, and interfaces
-- Read ROS 2 topic data
-- Read multiple topic messages
-- Inspect topic QoS
-- Automatically recommend compatible QoS
-- Publish structured ROS 2 messages
-- Maintain persistent publishers
-- Call ROS 2 services
-- Read and modify ROS 2 parameters
-- Discover and inspect ROS 2 Actions
-- Send ROS 2 Action goals
-- Receive ROS 2 Action feedback and results
-- Manage long-running Action goals
-- Cancel Action goals
-- Read `/rosout`
-- Read ROS diagnostics
-- Generate a runtime health summary
-- Start and stop managed ROS processes
-- Start and stop managed ROS launch files
-- Inspect and change lifecycle node states
-- Record and play rosbag2 data
-- Keep ROS-specific implementation details behind adapters
-- Keep ROS distributions replaceable
-- Keep MCP clients replaceable
-- Support Codex and other MCP-compatible clients
-- Keep runtime and development responsibilities separated
-- Avoid exposing arbitrary shell execution
-- Avoid exposing arbitrary ROS CLI execution
-- Apply configurable runtime safety guardrails
-- Keep subsystem-specific behavior outside the generic runtime MCP
+\- Inspect the ROS 2 graph
+\- Discover nodes, topics, services, actions, parameters, and interfaces
+\- Read ROS 2 topic data
+\- Read multiple topic messages
+\- Inspect topic QoS
+\- Automatically recommend compatible QoS
+\- Publish structured ROS 2 messages
+\- Maintain persistent publishers
+\- Call ROS 2 services
+\- Read and modify ROS 2 parameters
+\- Discover and inspect ROS 2 Actions
+\- Send ROS 2 Action goals
+\- Receive ROS 2 Action feedback and results
+\- Manage long-running Action goals
+\- Cancel Action goals
+\- Read \`/rosout\`
+\- Read ROS diagnostics
+\- Generate a runtime health summary
+\- Start and stop managed ROS processes
+\- Start and stop managed ROS launch files
+\- Inspect and change lifecycle node states
+\- Record and play rosbag2 data
+\- Keep ROS-specific implementation details behind adapters
+\- Keep ROS distributions replaceable
+\- Keep MCP clients replaceable
+\- Support Codex and other MCP-compatible clients
+\- Keep runtime and development responsibilities separated
+\- Avoid exposing arbitrary shell execution
+\- Avoid exposing arbitrary ROS CLI execution
+\- Apply configurable runtime safety guardrails
+\- Keep subsystem-specific behavior outside the generic runtime MCP
 
----
+**---**
 
-# Project Boundary
+**# Project Boundary**
 
-`ros2_mcp` is responsible for interacting with a running ROS 2 system.
+\`ros2\_mcp\` is responsible for interacting with a running ROS 2 system.
 
 Its responsibilities include:
 
-```text
+\`\`\`text
 runtime inspection
 runtime monitoring
 runtime diagnostics
@@ -99,19 +98,18 @@ ROS lifecycle operations
 rosbag2 operations
 QoS inspection
 runtime safety
-```
+\`\`\`
 
 It does not create or modify ROS 2 software projects.
 
 Development functionality belongs to:
 
-```text
-ros2_dev_mcp
-```
+\`\`\`text
+\`\`\`
 
 Examples include:
 
-```text
+\`\`\`text
 create workspace
 create package
 create node
@@ -120,31 +118,30 @@ create parameter file
 create tests
 build project
 run tests
-```
+\`\`\`
 
 The separation is intentional.
 
-```text
+\`\`\`text
 Codex / MCP Client
         |
         +-------------------------+
-        |                         |
+        \|                         |
         v                         v
-    ros2_mcp                 ros2_dev_mcp
-        |                         |
+        \|                         |
         v                         v
  ROS 2 Runtime             ROS 2 Development
-```
+\`\`\`
 
 This prevents runtime operations and filesystem/software-development operations from becoming coupled inside one MCP server.
 
----
+**---**
 
-# Architecture
+**# Architecture**
 
 The runtime architecture is layered.
 
-```text
+\`\`\`text
 MCP Client
     |
     v
@@ -164,85 +161,85 @@ rclpy / ROS 2 Runtime APIs
     |
     v
 ROS 2 / DDS
-```
+\`\`\`
 
 Current ROS distribution:
 
-```text
+\`\`\`text
 ROS 2 Jazzy
-```
+\`\`\`
 
-The MCP and application layers do not directly depend on `rclpy`.
+The MCP and application layers do not directly depend on \`rclpy\`.
 
 ROS distribution-specific behavior is isolated behind the ROS adapter layer.
 
 This allows future ROS distribution adapters to be introduced without changing the MCP protocol-facing API.
 
----
+**---**
 
-# Runtime Layer Responsibilities
+**# Runtime Layer Responsibilities**
 
-## MCP Layer
+**## MCP Layer**
 
-```text
-src/ros2_mcp/mcp/runtime_tools.py
-```
+\`\`\`text
+src/ros2\_mcp/mcp/runtime\_tools.py
+\`\`\`
 
 Responsibilities:
 
-```text
+\`\`\`text
 MCP tool definitions
 structured MCP input
 structured MCP output
 tool annotations
 delegation to RuntimeService
-```
+\`\`\`
 
-The MCP layer does not directly use `rclpy`.
+The MCP layer does not directly use \`rclpy\`.
 
----
+**---**
 
-## Application Layer
+**## Application Layer**
 
-```text
-src/ros2_mcp/application/runtime/service.py
-```
+\`\`\`text
+src/ros2\_mcp/application/runtime/service.py
+\`\`\`
 
 Responsibilities:
 
-```text
+\`\`\`text
 runtime use cases
 delegation through RosAdapter
 ROS-independent application logic
-```
+\`\`\`
 
----
+**---**
 
-## RosAdapter
+**## RosAdapter**
 
-```text
-src/ros2_mcp/ros/adapter.py
-```
+\`\`\`text
+src/ros2\_mcp/ros/adapter.py
+\`\`\`
 
 Defines the abstract runtime contract.
 
 The application layer depends on this abstraction instead of depending on the concrete Jazzy implementation.
 
----
+**---**
 
-## ROS 2 Jazzy Adapter
+**## ROS 2 Jazzy Adapter**
 
-```text
-src/ros2_mcp/ros/jazzy/
-```
+\`\`\`text
+src/ros2\_mcp/ros/jazzy/
+\`\`\`
 
 Contains the concrete ROS 2 Jazzy implementation.
 
 The implementation uses focused modules instead of one large monolithic adapter.
 
----
+**---**
 
-# Modular ROS 2 Jazzy Architecture
+**# Modular ROS 2 Jazzy Architecture**
 
 The original Jazzy adapter grew to more than 2,000 lines during runtime feature development.
 
@@ -250,13 +247,13 @@ It was therefore decomposed into dedicated modules.
 
 Current structure:
 
-```text
-src/ros2_mcp/ros/jazzy/
+\`\`\`text
+src/ros2\_mcp/ros/jazzy/
 ├── actions.py
 ├── adapter.py
 ├── diagnostics.py
 ├── graph.py
-├── __init__.py
+├── \_\_init\_\_.py
 ├── interfaces.py
 ├── launches.py
 ├── lifecycle.py
@@ -265,22 +262,22 @@ src/ros2_mcp/ros/jazzy/
 ├── processes.py
 ├── publishers.py
 ├── qos.py
-├── qos_auto.py
+├── qos\_auto.py
 ├── rosbag.py
 ├── safety.py
 ├── services.py
 └── topics.py
-```
+\`\`\`
 
 The main:
 
-```text
+\`\`\`text
 adapter.py
-```
+\`\`\`
 
 is now primarily responsible for:
 
-```text
+\`\`\`text
 ROS context initialization
 runtime node creation
 executor creation
@@ -288,19 +285,19 @@ executor synchronization
 shared registries
 mixin composition
 cleanup
-```
+\`\`\`
 
 ROS functionality lives in dedicated modules.
 
----
+**---**
 
-# Jazzy Adapter Composition
+**# Jazzy Adapter Composition**
 
 The concrete adapter composes the runtime features through mixins.
 
 Conceptually:
 
-```text
+\`\`\`text
 JazzyRosAdapter
     |
     +--> GraphMixin
@@ -321,23 +318,23 @@ JazzyRosAdapter
     +--> SafetyMixin
     |
     +--> RosAdapter
-```
+\`\`\`
 
 The complete abstract adapter contract has been verified.
 
 Expected result:
 
-```text
+\`\`\`text
 Abstract methods: []
-```
+\`\`\`
 
----
+**---**
 
-# Runtime Interaction Model
+**# Runtime Interaction Model**
 
 The runtime MCP exposes explicit operations instead of arbitrary shell execution.
 
-```text
+\`\`\`text
 MCP Client
     |
     v
@@ -354,293 +351,293 @@ RosAdapter
     |
     v
 Controlled ROS 2 Operation
-```
+\`\`\`
 
 The server does not expose:
 
-```text
+\`\`\`text
 arbitrary shell
 arbitrary ros2 CLI
 arbitrary Python execution
 filesystem development operations
-```
+\`\`\`
 
 This keeps runtime capabilities individually:
 
-```text
+\`\`\`text
 testable
 documentable
 restrictable
 observable
-```
+\`\`\`
 
----
+**---**
 
-# Current MCP Runtime Tools
+**# Current MCP Runtime Tools**
 
 The final generic ROS 2 runtime MCP provides:
 
-```text
+\`\`\`text
 46 tools
-```
+\`\`\`
 
 Current inventory:
 
-```text
-action_info
-call_service
-cancel_action_goal
-change_lifecycle_state
-create_persistent_publisher
-destroy_persistent_publisher
-get_action_status
-get_bag_info
-get_diagnostics
-get_lifecycle_state
-get_parameter
-get_ros_launch
-get_ros_process
-get_runtime_health
-get_safety_guardrails
-get_topic_qos
-interface_info
-list_actions
-list_interfaces
-list_nodes
-list_parameters
-list_persistent_publishers
-list_ros_launches
-list_ros_processes
-list_services
-list_topics
-node_info
-publish_topic
-publish_with_publisher
-read_rosout
-read_topic
-read_topic_messages
-recommend_topic_qos
-send_action_goal
-service_info
-set_parameter
-start_action_goal
-start_bag_playback
-start_bag_recording
-start_ros_launch
-start_ros_process
-stop_bag_playback
-stop_bag_recording
-stop_ros_launch
-stop_ros_process
-topic_info
-```
+\`\`\`text
+action\_info
+call\_service
+cancel\_action\_goal
+change\_lifecycle\_state
+create\_persistent\_publisher
+destroy\_persistent\_publisher
+get\_action\_status
+get\_bag\_info
+get\_diagnostics
+get\_lifecycle\_state
+get\_parameter
+get\_ros\_launch
+get\_ros\_process
+get\_runtime\_health
+get\_safety\_guardrails
+get\_topic\_qos
+interface\_info
+list\_actions
+list\_interfaces
+list\_nodes
+list\_parameters
+list\_persistent\_publishers
+list\_ros\_launches
+list\_ros\_processes
+list\_services
+list\_topics
+node\_info
+publish\_topic
+publish\_with\_publisher
+read\_rosout
+read\_topic
+read\_topic\_messages
+recommend\_topic\_qos
+send\_action\_goal
+service\_info
+set\_parameter
+start\_action\_goal
+start\_bag\_playback
+start\_bag\_recording
+start\_ros\_launch
+start\_ros\_process
+stop\_bag\_playback
+stop\_bag\_recording
+stop\_ros\_launch
+stop\_ros\_process
+topic\_info
+\`\`\`
 
----
+**---**
 
-# Runtime Capability Groups
+**# Runtime Capability Groups**
 
-## Graph and Discovery
+**## Graph and Discovery**
 
-```text
-list_nodes
-list_topics
-topic_info
-node_info
-list_services
-service_info
-list_parameters
-get_parameter
-list_interfaces
-interface_info
-list_actions
-action_info
-```
+\`\`\`text
+list\_nodes
+list\_topics
+topic\_info
+node\_info
+list\_services
+service\_info
+list\_parameters
+get\_parameter
+list\_interfaces
+interface\_info
+list\_actions
+action\_info
+\`\`\`
 
----
+**---**
 
-## Topic Operations
+**## Topic Operations**
 
-```text
-read_topic
-read_topic_messages
-publish_topic
-get_topic_qos
-recommend_topic_qos
-```
+\`\`\`text
+read\_topic
+read\_topic\_messages
+publish\_topic
+get\_topic\_qos
+recommend\_topic\_qos
+\`\`\`
 
----
+**---**
 
-## Persistent Publishers
+**## Persistent Publishers**
 
-```text
-create_persistent_publisher
-publish_with_publisher
-list_persistent_publishers
-destroy_persistent_publisher
-```
+\`\`\`text
+create\_persistent\_publisher
+publish\_with\_publisher
+list\_persistent\_publishers
+destroy\_persistent\_publisher
+\`\`\`
 
----
+**---**
 
-## Services
+**## Services**
 
-```text
-list_services
-service_info
-call_service
-```
+\`\`\`text
+list\_services
+service\_info
+call\_service
+\`\`\`
 
----
+**---**
 
-## Parameters
+**## Parameters**
 
-```text
-list_parameters
-get_parameter
-set_parameter
-```
+\`\`\`text
+list\_parameters
+get\_parameter
+set\_parameter
+\`\`\`
 
----
+**---**
 
-## Actions
+**## Actions**
 
-```text
-list_actions
-action_info
-send_action_goal
-start_action_goal
-get_action_status
-cancel_action_goal
-```
+\`\`\`text
+list\_actions
+action\_info
+send\_action\_goal
+start\_action\_goal
+get\_action\_status
+cancel\_action\_goal
+\`\`\`
 
----
+**---**
 
-## Runtime Observability
+**## Runtime Observability**
 
-```text
-read_rosout
-get_diagnostics
-get_runtime_health
-```
+\`\`\`text
+read\_rosout
+get\_diagnostics
+get\_runtime\_health
+\`\`\`
 
----
+**---**
 
-## Interface Discovery
+**## Interface Discovery**
 
-```text
-list_interfaces
-interface_info
-```
+\`\`\`text
+list\_interfaces
+interface\_info
+\`\`\`
 
----
+**---**
 
-## Process Management
+**## Process Management**
 
-```text
-start_ros_process
-get_ros_process
-list_ros_processes
-stop_ros_process
-```
+\`\`\`text
+start\_ros\_process
+get\_ros\_process
+list\_ros\_processes
+stop\_ros\_process
+\`\`\`
 
----
+**---**
 
-## Launch Management
+**## Launch Management**
 
-```text
-start_ros_launch
-get_ros_launch
-list_ros_launches
-stop_ros_launch
-```
+\`\`\`text
+start\_ros\_launch
+get\_ros\_launch
+list\_ros\_launches
+stop\_ros\_launch
+\`\`\`
 
----
+**---**
 
-## Lifecycle Management
+**## Lifecycle Management**
 
-```text
-get_lifecycle_state
-change_lifecycle_state
-```
+\`\`\`text
+get\_lifecycle\_state
+change\_lifecycle\_state
+\`\`\`
 
----
+**---**
 
-## rosbag2 Management
+**## rosbag2 Management**
 
-```text
-start_bag_recording
-stop_bag_recording
-get_bag_info
-start_bag_playback
-stop_bag_playback
-```
+\`\`\`text
+start\_bag\_recording
+stop\_bag\_recording
+get\_bag\_info
+start\_bag\_playback
+stop\_bag\_playback
+\`\`\`
 
----
+**---**
 
-## Safety
+**## Safety**
 
-```text
-get_safety_guardrails
-```
+\`\`\`text
+get\_safety\_guardrails
+\`\`\`
 
----
+**---**
 
-# ROS Graph Discovery
+**# ROS Graph Discovery**
 
-## `list_nodes`
+**## \`list\_nodes\`**
 
 Lists currently discovered ROS 2 nodes.
 
----
+**---**
 
-## `list_topics`
+**## \`list\_topics\`**
 
 Lists discovered topics and message types.
 
----
+**---**
 
-## `topic_info`
+**## \`topic\_info\`**
 
 Returns information such as:
 
-```text
+\`\`\`text
 topic name
 topic types
 publisher count
 subscriber count
-```
+\`\`\`
 
----
+**---**
 
-## `node_info`
+**## \`node\_info\`**
 
 Returns detailed node graph information.
 
 This includes:
 
-```text
+\`\`\`text
 publishers
 subscribers
 service servers
 service clients
-```
+\`\`\`
 
----
+**---**
 
-## `list_services`
+**## \`list\_services\`**
 
 Lists discovered services and service types.
 
----
+**---**
 
-## `service_info`
+**## \`service\_info\`**
 
 Returns information about a ROS 2 service and its runtime endpoints.
 
----
+**---**
 
-# Topic Reading
+**# Topic Reading**
 
-## `read_topic`
+**## \`read\_topic\`**
 
 Reads one ROS topic message.
 
@@ -648,392 +645,392 @@ The message type is dynamically discovered and resolved.
 
 Example result:
 
-```json
+\`\`\`json
 {
   "topic": "/example",
-  "type": "std_msgs/msg/String",
+  "type": "std\_msgs/msg/String",
   "message": {
     "data": "hello"
   }
 }
-```
+\`\`\`
 
 Topic reading uses automatic QoS discovery by default unless an explicit QoS profile is supplied.
 
----
+**---**
 
-# Multi-Message Topic Reading
+**# Multi-Message Topic Reading**
 
-## `read_topic_messages`
+**## \`read\_topic\_messages\`**
 
 Collects multiple messages from a topic during a bounded observation period.
 
 Important inputs:
 
-```text
-topic_name
-max_messages
-duration_sec
+\`\`\`text
+topic\_name
+max\_messages
+duration\_sec
 qos
-```
+\`\`\`
 
 Example:
 
-```text
+\`\`\`text
 Topic:
-/mcp_final/multi_messages
+/mcp\_final/multi\_messages
 
-max_messages:
+max\_messages:
 5
 
-duration_sec:
+duration\_sec:
 2
-```
+\`\`\`
 
 A real Codex test returned exactly five messages.
 
 Example:
 
-```text
+\`\`\`text
 codex multi message 326
 codex multi message 327
 codex multi message 328
 codex multi message 329
 codex multi message 330
-```
+\`\`\`
 
 The selected QoS was:
 
-```text
-history: keep_last
+\`\`\`text
+history: keep\_last
 depth: 7
-reliability: best_effort
+reliability: best\_effort
 durability: volatile
-```
+\`\`\`
 
----
+**---**
 
-# Topic Publishing
+**# Topic Publishing**
 
-## `publish_topic`
+**## \`publish\_topic\`**
 
 Publishes one structured ROS message.
 
 Example:
 
-```text
+\`\`\`text
 Topic:
 /chatter
 
 Type:
-std_msgs/msg/String
-```
+std\_msgs/msg/String
+\`\`\`
 
 Message:
 
-```json
+\`\`\`json
 {
-  "data": "hello from ros2_mcp"
+  "data": "hello from ros2\_mcp"
 }
-```
+\`\`\`
 
 The message type is dynamically resolved.
 
 Safety checks are applied before the write operation.
 
----
+**---**
 
-# Persistent Publishers
+**# Persistent Publishers**
 
 Phase 7 adds a managed publisher registry.
 
 Tools:
 
-```text
-create_persistent_publisher
-publish_with_publisher
-list_persistent_publishers
-destroy_persistent_publisher
-```
+\`\`\`text
+create\_persistent\_publisher
+publish\_with\_publisher
+list\_persistent\_publishers
+destroy\_persistent\_publisher
+\`\`\`
 
 The lifecycle is:
 
-```text
-create_persistent_publisher
+\`\`\`text
+create\_persistent\_publisher
         |
         v
-publisher_id
+publisher\_id
         |
         +--> publish
         +--> publish
         +--> publish
         |
         v
-destroy_persistent_publisher
-```
+destroy\_persistent\_publisher
+\`\`\`
 
 The registry stores information such as:
 
-```text
-publisher_id
+\`\`\`text
+publisher\_id
 topic
 type
 QoS
-publish_count
-subscriber_count
-```
+publish\_count
+subscriber\_count
+\`\`\`
 
 A real subscriber successfully received multiple messages from the same persistent publisher.
 
----
+**---**
 
-# QoS Support
+**# QoS Support**
 
 ROS 2 communication depends on DDS QoS compatibility.
 
 Supported QoS properties include:
 
-```text
+\`\`\`text
 history
 depth
 reliability
 durability
-```
+\`\`\`
 
 Supported reliability values:
 
-```text
+\`\`\`text
 reliable
-best_effort
-```
+best\_effort
+\`\`\`
 
 Supported durability values:
 
-```text
+\`\`\`text
 volatile
-transient_local
-```
+transient\_local
+\`\`\`
 
 Supported history values:
 
-```text
-keep_last
-keep_all
-```
+\`\`\`text
+keep\_last
+keep\_all
+\`\`\`
 
 Invalid profiles are rejected.
 
----
+**---**
 
-# QoS Inspection
+**# QoS Inspection**
 
-## `get_topic_qos`
+**## \`get\_topic\_qos\`**
 
 Discovers QoS profiles used by current publishers and subscriptions.
 
 Example:
 
-```text
-history: keep_last
+\`\`\`text
+history: keep\_last
 depth: 7
-reliability: best_effort
+reliability: best\_effort
 durability: volatile
-```
+\`\`\`
 
----
+**---**
 
-# QoS Recommendation
+**# QoS Recommendation**
 
-## `recommend_topic_qos`
+**## \`recommend\_topic\_qos\`**
 
 Generates a recommended profile for the requested role.
 
 Example:
 
-```text
+\`\`\`text
 role:
 subscription
-```
+\`\`\`
 
-A BEST_EFFORT publisher with depth 7 resulted in:
+A BEST\_EFFORT publisher with depth 7 resulted in:
 
-```text
-history: keep_last
+\`\`\`text
+history: keep\_last
 depth: 7
-reliability: best_effort
+reliability: best\_effort
 durability: volatile
-```
+\`\`\`
 
----
+**---**
 
-# Automatic QoS Selection
+**# Automatic QoS Selection**
 
 A real Codex integration test exposed an important QoS problem.
 
 The publisher used:
 
-```text
-BEST_EFFORT
+\`\`\`text
+BEST\_EFFORT
 VOLATILE
-KEEP_LAST
+KEEP\_LAST
 depth 7
-```
+\`\`\`
 
 The original default reader attempted:
 
-```text
+\`\`\`text
 RELIABLE
 VOLATILE
-KEEP_LAST
+KEEP\_LAST
 depth 10
-```
+\`\`\`
 
 ROS 2 reported:
 
-```text
+\`\`\`text
 incompatible QoS
 Last incompatible policy: RELIABILITY
-```
+\`\`\`
 
 The reader returned:
 
-```text
+\`\`\`text
 message: null
-```
+\`\`\`
 
 The implementation was corrected so that topic reading automatically derives a compatible QoS profile when no explicit QoS configuration is supplied.
 
 A real verification then returned:
 
-```json
+\`\`\`json
 {
   "message": {
     "data": "auto qos fixed 6"
   },
   "qos": {
-    "history": "keep_last",
+    "history": "keep\_last",
     "depth": 7,
-    "reliability": "best_effort",
+    "reliability": "best\_effort",
     "durability": "volatile"
   }
 }
-```
+\`\`\`
 
 Final result:
 
-```text
+\`\`\`text
 DEFAULT AUTO-QoS TEST: PASSED
-```
+\`\`\`
 
----
+**---**
 
-# Service Calls
+**# Service Calls**
 
-## `call_service`
+**## \`call\_service\`**
 
 Calls a ROS 2 service using structured input.
 
 Example:
 
-```text
+\`\`\`text
 Service:
-/mcp_test/set_enabled
+/mcp\_test/set\_enabled
 
 Type:
-std_srvs/srv/SetBool
-```
+std\_srvs/srv/SetBool
+\`\`\`
 
 Request:
 
-```json
+\`\`\`json
 {
   "data": true
 }
-```
+\`\`\`
 
 Verified response:
 
-```json
+\`\`\`json
 {
   "success": true,
   "message": "enabled"
 }
-```
+\`\`\`
 
 The service type is dynamically resolved.
 
----
+**---**
 
-# Parameter Operations
+**# Parameter Operations**
 
-## `list_parameters`
+**## \`list\_parameters\`**
 
 Lists parameters exposed by a ROS node.
 
----
+**---**
 
-## `get_parameter`
+**## \`get\_parameter\`**
 
 Reads one parameter.
 
----
+**---**
 
-## `set_parameter`
+**## \`set\_parameter\`**
 
 Changes one parameter.
 
 Example:
 
-```text
+\`\`\`text
 Node:
-/mcp_parameter_test
+/mcp\_parameter\_test
 
 Parameter:
 enabled
 
 Value:
 true
-```
+\`\`\`
 
 Independent ROS 2 verification confirmed:
 
-```text
+\`\`\`text
 Boolean value is: True
-```
+\`\`\`
 
----
+**---**
 
-# ROS Action Support
+**# ROS Action Support**
 
 The runtime supports both synchronous and managed action execution.
 
----
+**---**
 
-## `send_action_goal`
+**## \`send\_action\_goal\`**
 
 Sends a goal and waits for completion.
 
 Example:
 
-```text
+\`\`\`text
 Action:
-/mcp_test/fibonacci
+/mcp\_test/fibonacci
 
 Type:
-example_interfaces/action/Fibonacci
-```
+example\_interfaces/action/Fibonacci
+\`\`\`
 
 Goal:
 
-```json
+\`\`\`json
 {
   "order": 8
 }
-```
+\`\`\`
 
 Verified result:
 
-```json
+\`\`\`json
 {
   "sequence": [
     0,
@@ -1046,261 +1043,261 @@ Verified result:
     13
   ]
 }
-```
+\`\`\`
 
----
+**---**
 
-# Action Discovery
+**# Action Discovery**
 
-## `list_actions`
+**## \`list\_actions\`**
 
 Discovers active ROS 2 actions.
 
 Verified example:
 
-```text
-/mcp_final/fibonacci
-example_interfaces/action/Fibonacci
-```
+\`\`\`text
+/mcp\_final/fibonacci
+example\_interfaces/action/Fibonacci
+\`\`\`
 
----
+**---**
 
-# Action Inspection
+**# Action Inspection**
 
-## `action_info`
+**## \`action\_info\`**
 
 Returns structured information including:
 
-```text
+\`\`\`text
 name
 types
-server_count
-client_count
+server\_count
+client\_count
 servers
 clients
 transport endpoints
-```
+\`\`\`
 
 Verified server:
 
-```text
-/mcp_final_codex_server
-```
+\`\`\`text
+/mcp\_final\_codex\_server
+\`\`\`
 
 The action transport includes endpoints such as:
 
-```text
-_action/send_goal
-_action/get_result
-_action/cancel_goal
-_action/feedback
-_action/status
-```
+\`\`\`text
+\_action/send\_goal
+\_action/get\_result
+\_action/cancel\_goal
+\_action/feedback
+\_action/status
+\`\`\`
 
----
+**---**
 
-# Managed Action Goals
+**# Managed Action Goals**
 
 Long-running actions can be managed across multiple MCP calls.
 
 Tools:
 
-```text
-start_action_goal
-get_action_status
-cancel_action_goal
-```
+\`\`\`text
+start\_action\_goal
+get\_action\_status
+cancel\_action\_goal
+\`\`\`
 
 Conceptually:
 
-```text
-start_action_goal
+\`\`\`text
+start\_action\_goal
         |
         v
-goal_id
+goal\_id
         |
-        +--> get_action_status
-        +--> get_action_status
-        |
-        v
-cancel_action_goal
+        +--> get\_action\_status
+        +--> get\_action\_status
         |
         v
-get_action_status
-```
+cancel\_action\_goal
+        |
+        v
+get\_action\_status
+\`\`\`
 
 Stored information includes:
 
-```text
-goal_id
+\`\`\`text
+goal\_id
 action
 type
 goal
 status
-status_name
+status\_name
 feedback
 result
 completed
-```
+\`\`\`
 
 A real test verified the action states:
 
-```text
+\`\`\`text
 EXECUTING
 CANCELING
 CANCELED
-```
+\`\`\`
 
----
+**---**
 
-# Interface Discovery
+**# Interface Discovery**
 
-## `list_interfaces`
+**## \`list\_interfaces\`**
 
 Lists installed:
 
-```text
+\`\`\`text
 messages
 services
 actions
-```
+\`\`\`
 
 Interfaces can be filtered by:
 
-```text
+\`\`\`text
 package
 interface kind
-```
+\`\`\`
 
----
+**---**
 
-## `interface_info`
+**## \`interface\_info\`**
 
 Returns structured interface information.
 
 Example message:
 
-```text
-std_msgs/msg/String
-```
+\`\`\`text
+std\_msgs/msg/String
+\`\`\`
 
 Result:
 
-```text
+\`\`\`text
 kind: msg
 
 fields:
 data: string
-```
+\`\`\`
 
 Example service:
 
-```text
-std_srvs/srv/SetBool
-```
+\`\`\`text
+std\_srvs/srv/SetBool
+\`\`\`
 
 Result contains:
 
-```text
+\`\`\`text
 request
 response
-```
+\`\`\`
 
 Example action:
 
-```text
-example_interfaces/action/Fibonacci
-```
+\`\`\`text
+example\_interfaces/action/Fibonacci
+\`\`\`
 
 Result contains:
 
-```text
+\`\`\`text
 goal
 result
 feedback
-```
+\`\`\`
 
----
+**---**
 
-# ROS Logging
+**# ROS Logging**
 
-## `read_rosout`
+**## \`read\_rosout\`**
 
 Reads structured ROS log messages from:
 
-```text
+\`\`\`text
 /rosout
-```
+\`\`\`
 
 Filtering supports:
 
-```text
+\`\`\`text
 node
 minimum severity
 maximum number of messages
-```
+\`\`\`
 
 Example verified ERROR messages:
 
-```text
+\`\`\`text
 codex rosout error 14
 codex rosout error 15
 codex rosout error 16
 codex rosout error 17
 codex rosout error 18
 codex rosout error 19
-```
+\`\`\`
 
-Codex successfully retrieved the log entries using only `ros2_mcp`.
+Codex successfully retrieved the log entries using only \`ros2\_mcp\`.
 
----
+**---**
 
-# Diagnostics
+**# Diagnostics**
 
-## `get_diagnostics`
+**## \`get\_diagnostics\`**
 
 Reads ROS diagnostics from:
 
-```text
+\`\`\`text
 /diagnostics
-```
+\`\`\`
 
 using:
 
-```text
-diagnostic_msgs/msg/DiagnosticArray
-```
+\`\`\`text
+diagnostic\_msgs/msg/DiagnosticArray
+\`\`\`
 
 Supported levels:
 
-```text
+\`\`\`text
 OK
 WARN
 ERROR
 STALE
-```
+\`\`\`
 
-A ROS 2 Jazzy compatibility issue involving the generated Python representation of `DiagnosticStatus.level` was discovered during real testing and corrected.
+A ROS 2 Jazzy compatibility issue involving the generated Python representation of \`DiagnosticStatus.level\` was discovered during real testing and corrected.
 
----
+**---**
 
-# Runtime Health
+**# Runtime Health**
 
-## `get_runtime_health`
+**## \`get\_runtime\_health\`**
 
 Combines:
 
-```text
+\`\`\`text
 ROS graph
 diagnostics
 rosout
-```
+\`\`\`
 
 into one compact runtime health summary.
 
 Example:
 
-```text
+\`\`\`text
 health: ERROR
 
 graph:
@@ -1318,27 +1315,27 @@ rosout:
     warn: 3
     error: 2
     fatal: 0
-```
+\`\`\`
 
 Possible overall states include:
 
-```text
+\`\`\`text
 OK
 WARN
 ERROR
-```
+\`\`\`
 
----
+**---**
 
-# Executor Serialization
+**# Executor Serialization**
 
 A real Codex test exposed concurrent executor access.
 
 Observed error:
 
-```text
+\`\`\`text
 Executor is already spinning
-```
+\`\`\`
 
 Multiple MCP requests were attempting to spin the shared ROS executor concurrently.
 
@@ -1348,33 +1345,33 @@ Executor operations are centralized through adapter helper methods.
 
 A concurrent verification executed:
 
-```text
-get_runtime_health
-list_nodes
-list_topics
-get_runtime_health
-```
+\`\`\`text
+get\_runtime\_health
+list\_nodes
+list\_topics
+get\_runtime\_health
+\`\`\`
 
 successfully.
 
 Final result:
 
-```text
+\`\`\`text
 CONCURRENT EXECUTOR TEST: PASSED
-```
+\`\`\`
 
----
+**---**
 
-# ROS Process Management
+**# ROS Process Management**
 
 Tools:
 
-```text
-start_ros_process
-get_ros_process
-list_ros_processes
-stop_ros_process
-```
+\`\`\`text
+start\_ros\_process
+get\_ros\_process
+list\_ros\_processes
+stop\_ros\_process
+\`\`\`
 
 Processes are resolved through ROS package information.
 
@@ -1382,77 +1379,77 @@ The runtime does not expose arbitrary shell execution.
 
 Dry-run example:
 
-```text
+\`\`\`text
 package:
-demo_nodes_cpp
+demo\_nodes\_cpp
 
 executable:
 talker
-```
+\`\`\`
 
 Resolved executable:
 
-```text
-/opt/ros/jazzy/lib/demo_nodes_cpp/talker
-```
+\`\`\`text
+/opt/ros/jazzy/lib/demo\_nodes\_cpp/talker
+\`\`\`
 
 Result:
 
-```text
-dry_run: true
-```
+\`\`\`text
+dry\_run: true
+\`\`\`
 
----
+**---**
 
-# ROS Launch Management
+**# ROS Launch Management**
 
 Tools:
 
-```text
-start_ros_launch
-get_ros_launch
-list_ros_launches
-stop_ros_launch
-```
+\`\`\`text
+start\_ros\_launch
+get\_ros\_launch
+list\_ros\_launches
+stop\_ros\_launch
+\`\`\`
 
 Launch files are resolved through installed ROS packages and the ament index.
 
 A real test package was registered temporarily and used to start:
 
-```text
-mcp_launch_test_talker
-```
+\`\`\`text
+mcp\_launch\_test\_talker
+\`\`\`
 
 The full lifecycle passed:
 
-```text
+\`\`\`text
 START
 GET
 LIST
 STOP
 LIST AFTER STOP
-```
+\`\`\`
 
 Final result:
 
-```text
+\`\`\`text
 REAL LAUNCH MANAGEMENT TEST: PASSED
-```
+\`\`\`
 
----
+**---**
 
-# Lifecycle Node Management
+**# Lifecycle Node Management**
 
 Tools:
 
-```text
-get_lifecycle_state
-change_lifecycle_state
-```
+\`\`\`text
+get\_lifecycle\_state
+change\_lifecycle\_state
+\`\`\`
 
 Verified transitions included:
 
-```text
+\`\`\`text
 unconfigured
     |
     v
@@ -1466,41 +1463,41 @@ inactive
     |
     v
 unconfigured
-```
+\`\`\`
 
 The lifecycle test successfully performed:
 
-```text
+\`\`\`text
 configure
 activate
 deactivate
 cleanup
-```
+\`\`\`
 
----
+**---**
 
-# rosbag2 Management
+**# rosbag2 Management**
 
 Recording tools:
 
-```text
-start_bag_recording
-stop_bag_recording
-get_bag_info
-```
+\`\`\`text
+start\_bag\_recording
+stop\_bag\_recording
+get\_bag\_info
+\`\`\`
 
 Playback tools:
 
-```text
-start_bag_playback
-stop_bag_playback
-```
+\`\`\`text
+start\_bag\_playback
+stop\_bag\_playback
+\`\`\`
 
 A real recording test captured messages from:
 
-```text
-/mcp_bag_test
-```
+\`\`\`text
+/mcp\_bag\_test
+\`\`\`
 
 The recorded bag was inspected and subsequently played back.
 
@@ -1508,214 +1505,214 @@ Managed bag names are validated by the safety layer.
 
 Dry-run mode is also available.
 
----
+**---**
 
-# Safety Model
+**# Safety Model**
 
 Phase 7 introduces explicit runtime guardrails.
 
 Safety implementation:
 
-```text
-src/ros2_mcp/ros/jazzy/safety.py
-```
+\`\`\`text
+src/ros2\_mcp/ros/jazzy/safety.py
+\`\`\`
 
 Packaged default configuration:
 
-```text
-src/ros2_mcp/config/default.toml
-```
+\`\`\`text
+src/ros2\_mcp/config/default.toml
+\`\`\`
 
 Configuration loader and resolver:
 
-```text
-src/ros2_mcp/config/settings.py
-```
+\`\`\`text
+src/ros2\_mcp/config/settings.py
+\`\`\`
 
 Optional external deployment configuration can be selected with:
 
-```text
-ROS2_MCP_CONFIG
-```
+\`\`\`text
+ROS2\_MCP\_CONFIG
+\`\`\`
 
 The repository-level:
 
-```text
-config/ros2_mcp.toml
-```
+\`\`\`text
+config/ros2\_mcp.toml
+\`\`\`
 
 can still be used as an explicit external configuration, but runtime code no longer depends on the current working directory to find it.
 
----
+**---**
 
-# No Arbitrary Shell
+**# No Arbitrary Shell**
 
 The active policy reports:
 
-```text
-arbitrary_shell: false
-```
+\`\`\`text
+arbitrary\_shell: false
+\`\`\`
 
 The runtime exposes explicit ROS operations instead of shell commands.
 
----
+**---**
 
-# Managed Stop Policies
+**# Managed Stop Policies**
 
 Safety reports:
 
-```text
-managed_process_stop_only: true
-managed_launch_stop_only: true
-managed_rosbag_stop_only: true
-```
+\`\`\`text
+managed\_process\_stop\_only: true
+managed\_launch\_stop\_only: true
+managed\_rosbag\_stop\_only: true
+\`\`\`
 
 Only resources managed by this MCP server can be stopped through these operations.
 
----
+**---**
 
-# Package and Launch Resolution
+**# Package and Launch Resolution**
 
 Safety reports:
 
-```text
-package_resolution_required: true
-launch_file_resolution_required: true
-```
+\`\`\`text
+package\_resolution\_required: true
+launch\_file\_resolution\_required: true
+\`\`\`
 
 Managed process and launch execution must resolve through ROS package infrastructure.
 
----
+**---**
 
-# Path Traversal Protection
+**# Path Traversal Protection**
 
 Unsafe resource names are rejected.
 
 Examples:
 
-```text
+\`\`\`text
 ../bad
-```
+\`\`\`
 
 Negative tests verified:
 
-```text
+\`\`\`text
 process traversal blocked: True
 bag traversal blocked: True
-```
+\`\`\`
 
----
+**---**
 
-# Structured Argument Validation
+**# Structured Argument Validation**
 
 Process arguments are passed as structured lists instead of shell strings.
 
 Validation rejects:
 
-```text
+\`\`\`text
 NUL characters
 newlines
 carriage returns
 oversized arguments
 excessive argument counts
-```
+\`\`\`
 
----
+**---**
 
-# Protected ROS Topics
+**# Protected ROS Topics**
 
 Current protected topics include:
 
-```text
-/parameter_events
+\`\`\`text
+/parameter\_events
 /rosout
-```
+\`\`\`
 
 Writing directly to these topics is blocked.
 
 Verified result:
 
-```text
+\`\`\`text
 protected /rosout blocked: True
-```
+\`\`\`
 
----
+**---**
 
-# Configurable Safety Policies
+**# Configurable Safety Policies**
 
 Configuration supports:
 
-```text
-protected_topics
-protected_services
-protected_parameters
-protected_actions
+\`\`\`text
+protected\_topics
+protected\_services
+protected\_parameters
+protected\_actions
 
-allowed_process_packages
-allowed_launch_packages
-```
+allowed\_process\_packages
+allowed\_launch\_packages
+\`\`\`
 
 This allows installations to apply tighter policies without changing the implementation.
 
----
+**---**
 
-# Runtime Resource Limits
+**# Runtime Resource Limits**
 
 Current configured limits include:
 
-```text
-persistent_publishers: 32
-managed_processes: 16
-managed_launches: 8
-bag_recordings: 4
-bag_playbacks: 4
-```
+\`\`\`text
+persistent\_publishers: 32
+managed\_processes: 16
+managed\_launches: 8
+bag\_recordings: 4
+bag\_playbacks: 4
+\`\`\`
 
 These limits prevent unbounded resource creation.
 
----
+**---**
 
-# Dry-Run Support
+**# Dry-Run Support**
 
 Dry-run mode is available for:
 
-```text
-start_ros_process
-start_ros_launch
-start_bag_recording
-start_bag_playback
-```
+\`\`\`text
+start\_ros\_process
+start\_ros\_launch
+start\_bag\_recording
+start\_bag\_playback
+\`\`\`
 
 This allows an MCP client to validate an operation before actually starting a runtime resource.
 
----
+**---**
 
-# Safety Inspection
+**# Safety Inspection**
 
-## `get_safety_guardrails`
+**## \`get\_safety\_guardrails\`**
 
 Returns the active runtime safety configuration.
 
 Important information includes:
 
-```text
+\`\`\`text
 shell policy
 managed stop policy
 protected resources
 allowed packages
 resource limits
 dry-run support
-```
+\`\`\`
 
----
+**---**
 
-# Phase 8 Packaging and Deployment Readiness
+**# Phase 8 Packaging and Deployment Readiness**
 
-Phase 8 verifies that `ros2_mcp` is no longer dependent on execution from the source repository.
+Phase 8 verifies that \`ros2\_mcp\` is no longer dependent on execution from the source repository.
 
 The validated deployment path is:
 
-```text
+\`\`\`text
 source tree
     |
     v
@@ -1741,14 +1738,14 @@ Codex / MCP Client
     |
     v
 ROS 2 Jazzy
-```
+\`\`\`
 
 Verified Phase 8 properties:
 
-```text
+\`\`\`text
 centralized configuration resolution
 packaged default configuration
-ROS2_MCP_CONFIG override
+ROS2\_MCP\_CONFIG override
 invalid explicit configuration rejection
 wheel and sdist build
 isolated wheel installation
@@ -1760,35 +1757,35 @@ installed safety configuration
 installed runtime health
 Codex verification against installed package
 20 permanent tests
-```
+\`\`\`
 
----
+**---**
 
-# Configuration Resolution
+**# Configuration Resolution**
 
 Configuration lookup is centralized in:
 
-```text
-src/ros2_mcp/config/settings.py
-```
+\`\`\`text
+src/ros2\_mcp/config/settings.py
+\`\`\`
 
 The precedence is:
 
-```text
+\`\`\`text
 explicit configuration path
             |
             v
-     ROS2_MCP_CONFIG
+     ROS2\_MCP\_CONFIG
             |
             v
   packaged default.toml
-```
+\`\`\`
 
 The packaged default is:
 
-```text
-src/ros2_mcp/config/default.toml
-```
+\`\`\`text
+src/ros2\_mcp/config/default.toml
+\`\`\`
 
 An explicitly configured file must exist.
 
@@ -1796,26 +1793,26 @@ Invalid explicit configuration does not silently fall back to the packaged defau
 
 Example external configuration:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-export ROS2_MCP_CONFIG="$PWD/config/ros2_mcp.toml"
+export ROS2\_MCP\_CONFIG="$PWD/config/ros2\_mcp.toml"
 
 ros2-mcp
-```
+\`\`\`
 
----
+**---**
 
-# Build Distribution Packages
+**# Build Distribution Packages**
 
-The project uses `uv_build`.
+The project uses \`uv\_build\`.
 
 Build wheel and source distribution:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
@@ -1823,279 +1820,279 @@ rm -rf dist
 
 uv build
 
-find dist \
-  -maxdepth 1 \
-  -type f \
-  -printf '%f\n' \
-  | sort
-```
+find dist \\
+  -maxdepth 1 \\
+  -type f \\
+  -printf '%f\n' \\
+  \| sort
+\`\`\`
 
 Expected artifacts:
 
-```text
-*.whl
-*.tar.gz
-```
+\`\`\`text
+\*.whl
+\*.tar.gz
+\`\`\`
 
 The wheel contains:
 
-```text
-ros2_mcp/config/default.toml
-```
+\`\`\`text
+ros2\_mcp/config/default.toml
+\`\`\`
 
----
+**---**
 
-# Isolated Wheel Installation
+**# Isolated Wheel Installation**
 
 A clean virtual environment can verify installation independently of the source checkout.
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-rm -rf /tmp/ros2_mcp_phase_8_test_venv
+rm -rf /tmp/ros2\_mcp\_phase\_8\_test\_venv
 
-python -m venv \
-  --system-site-packages \
-  /tmp/ros2_mcp_phase_8_test_venv
+python -m venv \\
+  \--system-site-packages \\
+  /tmp/ros2\_mcp\_phase\_8\_test\_venv
 
-/tmp/ros2_mcp_phase_8_test_venv/bin/pip install \
-  dist/*.whl
-```
+/tmp/ros2\_mcp\_phase\_8\_test\_venv/bin/pip install \\
+  dist/\*.whl
+\`\`\`
 
-`--system-site-packages` allows the isolated Python environment to access the ROS 2 Jazzy Python installation, including `rclpy`.
+\`--system-site-packages\` allows the isolated Python environment to access the ROS 2 Jazzy Python installation, including \`rclpy\`.
 
 Verify the installed package from outside the repository:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 cd /tmp
 
-/tmp/ros2_mcp_phase_8_test_venv/bin/python - <<'PY'
-import ros2_mcp
+/tmp/ros2\_mcp\_phase\_8\_test\_venv/bin/python - <<'PY'
+import ros2\_mcp
 import rclpy
 
-from ros2_mcp.config.settings import (
-    load_settings,
-    resolve_config_path,
+from ros2\_mcp.config.settings import (
+    load\_settings,
+    resolve\_config\_path,
 )
 
-config_path = resolve_config_path()
+config\_path = resolve\_config\_path()
 
-print("ros2_mcp:", ros2_mcp.__file__)
-print("rclpy:", rclpy.__file__)
-print("config:", config_path)
-print("settings:", load_settings(config_path))
+print("ros2\_mcp:", ros2\_mcp.\_\_file\_\_)
+print("rclpy:", rclpy.\_\_file\_\_)
+print("config:", config\_path)
+print("settings:", load\_settings(config\_path))
 PY
 
-cd ~/projects/robotics/ros2_mcp
-```
+cd \~/projects/robotics/ros2\_mcp
+\`\`\`
 
 The configuration path must resolve into the installed package rather than the project repository.
 
----
+**---**
 
-# Installed MCP stdio Verification
+**# Installed MCP stdio Verification**
 
 The installed package was verified through the real MCP stdio protocol.
 
 Expected installed tool inventory:
 
-```text
+\`\`\`text
 46 tools
-```
+\`\`\`
 
 Representative installed operations verified:
 
-```text
-list_nodes
-list_topics
-list_actions
-interface_info
-list_interfaces
-get_runtime_health
-get_safety_guardrails
-start_ros_process with dry_run=true
-```
+\`\`\`text
+list\_nodes
+list\_topics
+list\_actions
+interface\_info
+list\_interfaces
+get\_runtime\_health
+get\_safety\_guardrails
+start\_ros\_process with dry\_run=true
+\`\`\`
 
-The installed server can execute from `/tmp` and does not require the source repository as its working directory.
+The installed server can execute from \`/tmp\` and does not require the source repository as its working directory.
 
----
+**---**
 
-# Permanent Phase 8 Tests
+**# Permanent Phase 8 Tests**
 
 Phase 8 adds:
 
-```text
-tests/unit/test_settings.py
-tests/integration/test_server_lifespan.py
-```
+\`\`\`text
+tests/unit/test\_settings.py
+tests/integration/test\_server\_lifespan.py
+\`\`\`
 
 Configuration tests verify:
 
-```text
+\`\`\`text
 packaged default resolution
 explicit configuration precedence
-ROS2_MCP_CONFIG override
+ROS2\_MCP\_CONFIG override
 missing explicit configuration rejection
 missing environment configuration rejection
 default settings loading
 custom settings loading
 invalid positive-limit validation
-```
+\`\`\`
 
 The server lifespan integration test verifies:
 
-```text
-create_server
+\`\`\`text
+create\_server
 configuration loading
 runtime initialization
 46 MCP tools
-get_safety_guardrails
-get_runtime_health
-start_ros_process with dry_run=true
+get\_safety\_guardrails
+get\_runtime\_health
+start\_ros\_process with dry\_run=true
 clean shutdown
-```
+\`\`\`
 
 Final Phase 8 test count:
 
-```text
+\`\`\`text
 20 passed
-```
+\`\`\`
 
----
+**---**
 
-# Development Environment
+**# Development Environment**
 
 Current development environment:
 
-```text
+\`\`\`text
 Ubuntu 24.04
 ROS 2 Jazzy
 Python 3.12
 uv
 MCP Python SDK
 Cyclone DDS
-```
+\`\`\`
 
----
+**---**
 
-# Environment Setup
+**# Environment Setup**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
-```
+\`\`\`
 
 When explicitly configuring the project ROS domain:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-export ROS_DOMAIN_ID=30
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-```
+export ROS\_DOMAIN\_ID=30
+export RMW\_IMPLEMENTATION=rmw\_cyclonedds\_cpp
+\`\`\`
 
----
+**---**
 
-# Install Dependencies
+**# Install Dependencies**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 
 uv sync
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
-```
+\`\`\`
 
----
+**---**
 
-# Run the MCP Server
+**# Run the MCP Server**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-python -m ros2_mcp.server
-```
+python -m ros2\_mcp.server
+\`\`\`
 
 The server uses MCP standard I/O transport.
 
----
+**---**
 
-# Syntax Check
+**# Syntax Check**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 python -m compileall -q src tests
-```
+\`\`\`
 
 Expected:
 
-```text
+\`\`\`text
 exit code 0
-```
+\`\`\`
 
----
+**---**
 
-# Runtime Tests
+**# Runtime Tests**
 
 Run:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 pytest -q
-```
+\`\`\`
 
 Final verified Phase 8 result:
 
-```text
+\`\`\`text
 ....................                                                     [100%]
 
 20 passed
-```
+\`\`\`
 
----
+**---**
 
-# Complete Local Verification
+**# Complete Local Verification**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 python -m compileall -q src tests
 pytest -q
-```
+\`\`\`
 
 Expected:
 
-```text
+\`\`\`text
 20 passed
-```
+\`\`\`
 
----
+**---**
 
-# MCP Tool Inventory Test
+**# MCP Tool Inventory Test**
 
 The registered MCP tools can be queried directly.
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
@@ -2103,18 +2100,18 @@ python - <<'PY'
 import asyncio
 
 from mcp import Client
-from ros2_mcp.server import create_server
+from ros2\_mcp.server import create\_server
 
 
 async def main() -> None:
-    """Print all registered ros2_mcp tools."""
-    server = create_server()
+    """Print all registered ros2\_mcp tools."""
+    server = create\_server()
 
     async with Client(
         server,
-        raise_exceptions=True,
+        raise\_exceptions=True,
     ) as client:
-        result = await client.list_tools()
+        result = await client.list\_tools()
 
         names = sorted(
             tool.name
@@ -2129,346 +2126,344 @@ async def main() -> None:
 
 asyncio.run(main())
 PY
-```
+\`\`\`
 
 Expected final result:
 
-```text
+\`\`\`text
 Tool count: 46
-```
+\`\`\`
 
----
+**---**
 
-# Adapter Contract Check
+**# Adapter Contract Check**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 python - <<'PY'
-from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
+from ros2\_mcp.ros.jazzy.adapter import JazzyRosAdapter
 
 
 print(
     "Abstract methods:",
-    sorted(JazzyRosAdapter.__abstractmethods__),
+    sorted(JazzyRosAdapter.\_\_abstractmethods\_\_),
 )
 
-if JazzyRosAdapter.__abstractmethods__:
+if JazzyRosAdapter.\_\_abstractmethods\_\_:
     raise RuntimeError(
         "JazzyRosAdapter does not implement the complete RosAdapter contract."
     )
 
 print("JazzyRosAdapter contract: OK")
 PY
-```
+\`\`\`
 
 Expected:
 
-```text
+\`\`\`text
 Abstract methods: []
 JazzyRosAdapter contract: OK
-```
+\`\`\`
 
----
+**---**
 
-# Adapter Structure Check
+**# Adapter Structure Check**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-wc -l src/ros2_mcp/ros/jazzy/adapter.py
+wc -l src/ros2\_mcp/ros/jazzy/adapter.py
 
-find src/ros2_mcp/ros/jazzy \
-  -maxdepth 1 \
-  -type f \
-  -printf '%f\n' \
-  | sort
-```
+find src/ros2\_mcp/ros/jazzy \\
+  -maxdepth 1 \\
+  -type f \\
+  -printf '%f\n' \\
+  \| sort
+\`\`\`
 
 The implementation should remain modular.
 
----
+**---**
 
-# Safety Guardrail Check
+**# Safety Guardrail Check**
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 python - <<'PY'
 from pprint import pprint
 
-from ros2_mcp.ros.jazzy.adapter import JazzyRosAdapter
+from ros2\_mcp.ros.jazzy.adapter import JazzyRosAdapter
 
 
 adapter = JazzyRosAdapter()
 try:
     pprint(
-        adapter.get_safety_guardrails()
+        adapter.get\_safety\_guardrails()
     )
 finally:
     adapter.close()
 PY
-```
+\`\`\`
 
----
+**---**
 
-# Codex Integration
+**# Codex Integration**
 
 Register the local MCP server with Codex.
 
 Example:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-codex mcp add ros2_mcp \
-  --env ROS_DOMAIN_ID=30 \
-  --env RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
-  -- \
-  bash -lc 'cd /home/sarvg/projects/robotics/ros2_mcp && source /opt/ros/jazzy/setup.bash && source .venv/bin/activate && exec python -m ros2_mcp.server'
-```
+codex mcp add ros2\_mcp \\
+  \--env ROS\_DOMAIN\_ID=30 \\
+  \--env RMW\_IMPLEMENTATION=rmw\_cyclonedds\_cpp \\
+  \-- \\
+  bash -lc 'cd /home/sarvg/projects/robotics/ros2\_mcp && source /opt/ros/jazzy/setup.bash && source .venv/bin/activate && exec python -m ros2\_mcp.server'
+\`\`\`
 
 Inspect the registration:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-codex mcp get ros2_mcp
-```
+codex mcp get ros2\_mcp
+\`\`\`
 
 Start Codex:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 codex
-```
+\`\`\`
 
 Inside Codex:
 
-```text
+\`\`\`text
 /mcp
-```
+\`\`\`
 
----
+**---**
 
-# Codex Installed-Package Verification
+**# Codex Installed-Package Verification**
 
 Phase 8 also verifies Codex against an isolated installed wheel.
 
 A temporary MCP registration can be created without replacing the development registration:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-codex mcp remove ros2_mcp_installed 2>/dev/null || true
+codex mcp remove ros2\_mcp\_installed 2>/dev/null || true
 
-codex mcp add ros2_mcp_installed \
-  --env ROS_DOMAIN_ID=30 \
-  --env RMW_IMPLEMENTATION=rmw_cyclonedds_cpp \
-  -- \
-  bash -lc \
-  'source /opt/ros/jazzy/setup.bash && exec /tmp/ros2_mcp_phase_8_3_final_venv/bin/ros2-mcp'
+codex mcp add ros2\_mcp\_installed \\
+  \--env ROS\_DOMAIN\_ID=30 \\
+  \--env RMW\_IMPLEMENTATION=rmw\_cyclonedds\_cpp \\
+  \-- \\
+  bash -lc \\
+  'source /opt/ros/jazzy/setup.bash && exec /tmp/ros2\_mcp\_phase\_8\_3\_final\_venv/bin/ros2-mcp'
 
-codex mcp get ros2_mcp_installed
+codex mcp get ros2\_mcp\_installed
 codex mcp list
-```
+\`\`\`
 
 Start Codex:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 codex
-```
+\`\`\`
 
 The final installed-package verification used only:
 
-```text
-ros2_mcp_installed
-```
+\`\`\`text
+ros2\_mcp\_installed
+\`\`\`
 
 and successfully exercised:
 
-```text
-list_nodes
-list_topics
-list_actions
-interface_info
-list_interfaces
-get_runtime_health
-get_safety_guardrails
-start_ros_process with dry_run=true
-```
+\`\`\`text
+list\_nodes
+list\_topics
+list\_actions
+interface\_info
+list\_interfaces
+get\_runtime\_health
+get\_safety\_guardrails
+start\_ros\_process with dry\_run=true
+\`\`\`
 
 Final result:
 
-```text
+\`\`\`text
 all requested operations succeeded
 no real ROS process started
 no project file modified
-```
+\`\`\`
 
 The temporary verification registration can be removed afterwards:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
-codex mcp remove ros2_mcp_installed
+codex mcp remove ros2\_mcp\_installed
 codex mcp list
-```
+\`\`\`
 
-The `/tmp` installation is a test environment only and is not intended as a permanent deployment location.
+The \`/tmp\` installation is a test environment only and is not intended as a permanent deployment location.
 
----
+**---**
 
-# Codex Usage Rule
+**# Codex Usage Rule**
 
 For runtime-only tests, Codex can be explicitly instructed:
 
-```text
-Use only ros2_mcp.
+\`\`\`text
+Use only ros2\_mcp.
 Do not use shell commands.
 Do not modify files.
-Do not use ros2_dev_mcp.
-```
+\`\`\`
 
 This makes it possible to verify that Codex selects the runtime MCP instead of falling back to the shell or development server.
 
----
+**---**
 
-# Verified Codex Runtime Operations
+**# Verified Codex Runtime Operations**
 
 Codex has successfully exercised runtime operations including:
 
-```text
-list_nodes
-topic_info
-publish_topic
-call_service
-set_parameter
-send_action_goal
-read_rosout
-interface_info
-list_interfaces
-get_topic_qos
-recommend_topic_qos
-get_runtime_health
-get_safety_guardrails
-start_ros_process with dry_run
-list_actions
-action_info
-read_topic_messages
-```
+\`\`\`text
+list\_nodes
+topic\_info
+publish\_topic
+call\_service
+set\_parameter
+send\_action\_goal
+read\_rosout
+interface\_info
+list\_interfaces
+get\_topic\_qos
+recommend\_topic\_qos
+get\_runtime\_health
+get\_safety\_guardrails
+start\_ros\_process with dry\_run
+list\_actions
+action\_info
+read\_topic\_messages
+\`\`\`
 
----
+**---**
 
-# Final Codex Action and Multi-Message Test
+**# Final Codex Action and Multi-Message Test**
 
 A final integration environment exposed:
 
-```text
+\`\`\`text
 Action:
-/mcp_final/fibonacci
+/mcp\_final/fibonacci
 
 Action type:
-example_interfaces/action/Fibonacci
+example\_interfaces/action/Fibonacci
 
 Server:
-/mcp_final_codex_server
-```
+/mcp\_final\_codex\_server
+\`\`\`
 
 and:
 
-```text
+\`\`\`text
 Topic:
-/mcp_final/multi_messages
-```
+/mcp\_final/multi\_messages
+\`\`\`
 
 Codex was instructed:
 
-```text
-Use only ros2_mcp.
+\`\`\`text
+Use only ros2\_mcp.
 Perform the final verification of the three new ROS 2 core tools.
 
-1. List all currently discovered ROS 2 actions.
+1\. List all currently discovered ROS 2 actions.
 
-2. Inspect this action:
-   /mcp_final/fibonacci
+2\. Inspect this action:
+   /mcp\_final/fibonacci
 
-3. Read exactly 5 messages from:
-   /mcp_final/multi_messages
+3\. Read exactly 5 messages from:
+   /mcp\_final/multi\_messages
 
 Use automatic QoS selection.
 Use a maximum duration of 2 seconds.
 
 Do not use shell commands.
 Do not modify files.
-Do not use ros2_dev_mcp.
-```
+\`\`\`
 
 Codex selected:
 
-```text
-list_actions
-action_info
-read_topic_messages
-```
+\`\`\`text
+list\_actions
+action\_info
+read\_topic\_messages
+\`\`\`
 
 All operations succeeded.
 
 Five messages were received:
 
-```text
+\`\`\`text
 codex multi message 326
 codex multi message 327
 codex multi message 328
 codex multi message 329
 codex multi message 330
-```
+\`\`\`
 
 QoS:
 
-```text
-history: keep_last
+\`\`\`text
+history: keep\_last
 depth: 7
-reliability: best_effort
+reliability: best\_effort
 durability: volatile
-```
+\`\`\`
 
 Final Codex result:
 
-```text
+\`\`\`text
 Every operation succeeded: Yes
-```
+\`\`\`
 
----
+**---**
 
-# Real ROS 2 Verification
+**# Real ROS 2 Verification**
 
 The implementation has been tested against a real ROS 2 Jazzy runtime.
 
 Verified areas include:
 
-```text
+\`\`\`text
 ROS graph discovery
 
 topic inspection
@@ -2509,59 +2504,59 @@ rosbag playback
 safety rejection tests
 
 executor concurrency
-```
+\`\`\`
 
----
+**---**
 
-# Important Runtime Issues Found and Fixed
+**# Important Runtime Issues Found and Fixed**
 
 Real runtime testing exposed several issues that unit testing alone did not reveal.
 
-## Diagnostic Level Representation
+**## Diagnostic Level Representation**
 
 ROS diagnostic severity values required normalization before integer comparison.
 
 Status:
 
-```text
+\`\`\`text
 FIXED
-```
+\`\`\`
 
----
+**---**
 
-## Auto-QoS Compatibility
+**## Auto-QoS Compatibility**
 
-A RELIABLE subscription could not receive from a BEST_EFFORT publisher.
+A RELIABLE subscription could not receive from a BEST\_EFFORT publisher.
 
 Status:
 
-```text
+\`\`\`text
 FIXED
-```
+\`\`\`
 
 Default topic reading now automatically derives a compatible profile.
 
----
+**---**
 
-## Executor Concurrency
+**## Executor Concurrency**
 
 Concurrent MCP calls produced:
 
-```text
+\`\`\`text
 Executor is already spinning
-```
+\`\`\`
 
 Status:
 
-```text
+\`\`\`text
 FIXED
-```
+\`\`\`
 
 Executor access is now serialized.
 
----
+**---**
 
-## Launch Package Resolution
+**## Launch Package Resolution**
 
 The launch integration test initially used an incomplete temporary ament package registration.
 
@@ -2569,28 +2564,28 @@ The test environment was corrected to use the ament resource index.
 
 Status:
 
-```text
+\`\`\`text
 FIXED
 REAL LAUNCH MANAGEMENT TEST: PASSED
-```
+\`\`\`
 
----
+**---**
 
-# Documentation
+**# Documentation**
 
 Runtime development documentation is stored in:
 
-```text
+\`\`\`text
 docs/
-├── README_PHASE_1.md
-├── README_PHASE_2.md
-├── README_PHASE_3.md
-├── README_PHASE_4.md
-├── README_PHASE_5.md
-├── README_PHASE_6.md
-├── README_PHASE_7.md
-└── README_PHASE_8.md
-```
+├── README\_PHASE\_1.md
+├── README\_PHASE\_2.md
+├── README\_PHASE\_3.md
+├── README\_PHASE\_4.md
+├── README\_PHASE\_5.md
+├── README\_PHASE\_6.md
+├── README\_PHASE\_7.md
+└── README\_PHASE\_8.md
+\`\`\`
 
 Phase 6 documents the controlled interaction foundation.
 
@@ -2598,11 +2593,11 @@ Phase 7 documents the advanced runtime, observability, safety, management, QoS, 
 
 Phase 8 documents configuration resolution, packaged defaults, wheel installation, installed MCP stdio operation, Codex verification against the installed package, and permanent packaging/configuration regression tests.
 
----
+**---**
 
-# Completed Runtime Capabilities
+**# Completed Runtime Capabilities**
 
-```text
+\`\`\`text
 ROS graph discovery            ✅
 Node inspection                ✅
 
@@ -2668,13 +2663,13 @@ Wheel + sdist build            ✅
 Isolated wheel installation    ✅
 Installed MCP stdio            ✅
 Server lifespan regression     ✅
-```
+\`\`\`
 
----
+**---**
 
-# Verified Final Status
+**# Verified Final Status**
 
-```text
+\`\`\`text
 MCP tools:
 46
 
@@ -2704,15 +2699,15 @@ PASS
 
 Codex installed-package integration:
 PASS
-```
+\`\`\`
 
----
+**---**
 
-# Current Limitations and Intentional Boundaries
+**# Current Limitations and Intentional Boundaries**
 
-The following capabilities are intentionally outside the generic `ros2_mcp` scope:
+The following capabilities are intentionally outside the generic \`ros2\_mcp\` scope:
 
-```text
+\`\`\`text
 ROS 1 compatibility
 
 arbitrary shell execution
@@ -2728,7 +2723,7 @@ camera image retrieval
 camera-specific processing
 LiDAR-specific processing
 
-ros2_control-specific semantics
+ros2\_control-specific semantics
 Nav2-specific semantics
 MoveIt 2-specific semantics
 
@@ -2736,27 +2731,27 @@ robot-specific physical safety
 controller-specific safety
 navigation-specific safety
 manipulation-specific safety
-```
+\`\`\`
 
 These are not considered missing generic runtime features.
 
 They belong to separate development or specialized robotics MCP servers.
 
----
+**---**
 
-# Image Retrieval Boundary
+**# Image Retrieval Boundary**
 
-Camera and image retrieval are intentionally not implemented directly in `ros2_mcp`.
+Camera and image retrieval are intentionally not implemented directly in \`ros2\_mcp\`.
 
 A future specialized MCP can provide:
 
-```text
-mcp_camera
-```
+\`\`\`text
+mcp\_camera
+\`\`\`
 
 Possible responsibilities:
 
-```text
+\`\`\`text
 image retrieval
 depth images
 camera info
@@ -2765,22 +2760,22 @@ stream selection
 camera metadata
 point-cloud conversion
 camera-specific diagnostics
-```
+\`\`\`
 
 Possible future hardware:
 
-```text
+\`\`\`text
 Intel RealSense
 Luxonis OAK-D
 Stereolabs ZED2
-generic ROS image_transport cameras
-```
+generic ROS image\_transport cameras
+\`\`\`
 
-`ros2_mcp` can still inspect the corresponding ROS topics through its normal graph and topic tools.
+\`ros2\_mcp\` can still inspect the corresponding ROS topics through its normal graph and topic tools.
 
----
+**---**
 
-# ROS 1 Boundary
+**# ROS 1 Boundary**
 
 This project targets ROS 2.
 
@@ -2788,7 +2783,7 @@ ROS 1 is intentionally not supported.
 
 The architecture is built around:
 
-```text
+\`\`\`text
 ROS 2
 DDS
 rclpy
@@ -2796,47 +2791,46 @@ ROS 2 Actions
 ROS 2 Lifecycle
 ROS 2 QoS
 ROS 2 interfaces
-```
+\`\`\`
 
 ROS 1 compatibility would require a separate runtime model and is outside the project scope.
 
----
+**---**
 
-# Specialized MCP Architecture
+**# Specialized MCP Architecture**
 
 The generic runtime MCP should remain focused.
 
 Future subsystem-specific servers can build on the generic ROS 2 runtime foundation.
 
-```text
+\`\`\`text
                     MCP Client / AI Agent
                             |
             +---------------+---------------+
-            |               |               |
+            \|               |               |
             v               v               v
-        ros2_mcp       ros2_dev_mcp    Specialized MCPs
-            |               |               |
+            \|               |               |
             v               v               |
       ROS 2 Runtime     ROS 2 Projects       |
-                                            +--> ros2_control_mcp
-                                            +--> ros2_nav_mcp
-                                            +--> ros2_moveit_mcp
-                                            +--> mcp_camera
-```
+                                            +--> ros2\_control\_mcp
+                                            +--> ros2\_nav\_mcp
+                                            +--> ros2\_moveit\_mcp
+                                            +--> mcp\_camera
+\`\`\`
 
----
+**---**
 
-# ros2_control MCP
+**# ros2\_control MCP**
 
 Planned:
 
-```text
-ros2_control_mcp
-```
+\`\`\`text
+ros2\_control\_mcp
+\`\`\`
 
 Possible responsibilities:
 
-```text
+\`\`\`text
 controller manager
 controller states
 controller switching
@@ -2846,23 +2840,23 @@ joint command interfaces
 joint state interfaces
 hardware status
 controller safety
-```
+\`\`\`
 
-These concepts should not be embedded directly into generic `ros2_mcp`.
+These concepts should not be embedded directly into generic \`ros2\_mcp\`.
 
----
+**---**
 
-# Nav2 MCP
+**# Nav2 MCP**
 
 Planned:
 
-```text
-ros2_nav_mcp
-```
+\`\`\`text
+ros2\_nav\_mcp
+\`\`\`
 
 Possible responsibilities:
 
-```text
+\`\`\`text
 navigation goals
 navigation cancellation
 navigation status
@@ -2872,23 +2866,23 @@ localization
 planner selection
 behavior trees
 navigation safety
-```
+\`\`\`
 
-Generic Action and Lifecycle functionality from `ros2_mcp` provides the runtime foundation.
+Generic Action and Lifecycle functionality from \`ros2\_mcp\` provides the runtime foundation.
 
----
+**---**
 
-# MoveIt 2 MCP
+**# MoveIt 2 MCP**
 
 Planned:
 
-```text
-ros2_moveit_mcp
-```
+\`\`\`text
+ros2\_moveit\_mcp
+\`\`\`
 
 Possible responsibilities:
 
-```text
+\`\`\`text
 planning groups
 robot state
 joint targets
@@ -2898,23 +2892,23 @@ trajectory execution
 planning scene
 collision objects
 manipulation safety
-```
+\`\`\`
 
-The generic ROS topic, service, parameter, action, and interface tools remain in `ros2_mcp`.
+The generic ROS topic, service, parameter, action, and interface tools remain in \`ros2\_mcp\`.
 
----
+**---**
 
-# Camera MCP
+**# Camera MCP**
 
 Planned:
 
-```text
-mcp_camera
-```
+\`\`\`text
+mcp\_camera
+\`\`\`
 
 Possible responsibilities:
 
-```text
+\`\`\`text
 image retrieval
 depth retrieval
 camera info
@@ -2922,19 +2916,19 @@ stream management
 camera configuration
 camera-specific diagnostics
 camera point-cloud handling
-```
+\`\`\`
 
 This separation prevents the generic ROS runtime server from becoming monolithic.
 
----
+**---**
 
-# Future Real Robot Integration
+**# Future Real Robot Integration**
 
 Once the specialized MCP servers are available, realistic robot scenarios can be built.
 
 Examples include:
 
-```text
+\`\`\`text
 TurtleBot3
 OpenManipulator-X
 RealSense
@@ -2947,52 +2941,52 @@ robot controllers
 navigation
 motion planning
 perception
-```
+\`\`\`
 
 Conceptually:
 
-```text
+\`\`\`text
 LLM / MCP Client
         |
         v
 Specialized MCP
         |
         v
-ros2_mcp Runtime Foundation
+ros2\_mcp Runtime Foundation
         |
         v
 ROS 2
         |
         v
 Robot / Sensors / Actuators
-```
+\`\`\`
 
----
+**---**
 
-# Project Principles
+**# Project Principles**
 
-- Runtime and development tooling remain separated
-- ROS access goes through a dedicated adapter
-- ROS distributions should remain replaceable
-- MCP clients should remain replaceable
-- Read and write operations remain clearly distinguishable
-- Runtime write operations are explicit
-- Avoid private or unstable ROS APIs when possible
-- Avoid unnecessary frameworks
-- No arbitrary shell interface in the runtime MCP
-- No arbitrary ROS CLI execution in the runtime MCP
-- Safety policies remain explicit and inspectable
-- Runtime resources remain managed and bounded
-- Subsystem-specific semantics remain separate
-- Implementation remains independent
-- External ROS MCP projects may be evaluated for architecture and feature comparison
-- External ROS MCP code is not copied into this implementation
+\- Runtime and development tooling remain separated
+\- ROS access goes through a dedicated adapter
+\- ROS distributions should remain replaceable
+\- MCP clients should remain replaceable
+\- Read and write operations remain clearly distinguishable
+\- Runtime write operations are explicit
+\- Avoid private or unstable ROS APIs when possible
+\- Avoid unnecessary frameworks
+\- No arbitrary shell interface in the runtime MCP
+\- No arbitrary ROS CLI execution in the runtime MCP
+\- Safety policies remain explicit and inspectable
+\- Runtime resources remain managed and bounded
+\- Subsystem-specific semantics remain separate
+\- Implementation remains independent
+\- External ROS MCP projects may be evaluated for architecture and feature comparison
+\- External ROS MCP code is not copied into this implementation
 
----
+**---**
 
-# Current Project Status
+**# Current Project Status**
 
-```text
+\`\`\`text
 Phase 1   Runtime foundation                   ✅
 Phase 2   ROS graph discovery                  ✅
 Phase 3   Topic runtime inspection             ✅
@@ -3001,13 +2995,13 @@ Phase 5   Extended runtime inspection          ✅
 Phase 6   Controlled runtime interaction       ✅
 Phase 7   Advanced runtime operations          ✅
 Phase 8   Packaging and deployment readiness   ✅
-```
+\`\`\`
 
 The generic ROS 2 runtime foundation is now operational.
 
 Final generic runtime status:
 
-```text
+\`\`\`text
 46 MCP tools
 20 tests passed
 real ROS 2 verification passed
@@ -3020,18 +3014,18 @@ packaged default configuration enabled
 centralized configuration resolution enabled
 modular Jazzy architecture
 safety guardrails enabled
-```
+\`\`\`
 
-The generic `ros2_mcp` feature scope is therefore considered complete for the current architecture.
+The generic \`ros2\_mcp\` feature scope is therefore considered complete for the current architecture.
 
----
+**---**
 
-# Final Repository Verification
+**# Final Repository Verification**
 
 Before committing:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
@@ -3042,37 +3036,37 @@ git diff --check
 
 git status
 git diff --stat
-```
+\`\`\`
 
 Expected:
 
-```text
+\`\`\`text
 20 passed
-```
+\`\`\`
 
----
+**---**
 
-# Final Commit Procedure
+**# Final Commit Procedure**
 
 After documentation and final verification:
 
-```bash
-cd ~/projects/robotics/ros2_mcp
+\`\`\`bash
+cd \~/projects/robotics/ros2\_mcp
 source .venv/bin/activate
 source /opt/ros/jazzy/setup.bash
 
 git status
 git diff --stat
 
-git add \
-  README.md \
-  docs/README_PHASE_8.md \
-  src/ros2_mcp/config/default.toml \
-  src/ros2_mcp/config/settings.py \
-  src/ros2_mcp/ros/jazzy/safety.py \
-  src/ros2_mcp/server.py \
-  tests/integration/test_server_lifespan.py \
-  tests/unit/test_settings.py
+git add \\
+  README.md \\
+  docs/README\_PHASE\_8.md \\
+  src/ros2\_mcp/config/default.toml \\
+  src/ros2\_mcp/config/settings.py \\
+  src/ros2\_mcp/ros/jazzy/safety.py \\
+  src/ros2\_mcp/server.py \\
+  tests/integration/test\_server\_lifespan.py \\
+  tests/unit/test\_settings.py
 
 git status --short
 
@@ -3082,21 +3076,21 @@ git push origin main
 
 git status
 git log --oneline -5
-```
+\`\`\`
 
 Desired final state:
 
-```text
+\`\`\`text
 working tree clean
 branch synchronized with origin/main
-```
+\`\`\`
 
----
+**---**
 
-# Repository
+**# Repository**
 
 This project is developed independently.
 
 Other ROS MCP implementations may be evaluated for feature and architecture comparison, but their source code is not used as a copy-and-paste implementation basis.
 
-The architecture and implementation of `ros2_mcp` are developed specifically for this project.
+The architecture and implementation of \`ros2\_mcp\` are developed specifically for this project.
