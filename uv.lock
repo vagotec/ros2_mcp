@@ -446,6 +446,7 @@ dependencies = [
     { name = "mcp" },
     { name = "numpy" },
     { name = "pyyaml" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -458,6 +459,7 @@ requires-dist = [
     { name = "mcp", specifier = ">=2,<3" },
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
+    { name = "uvicorn", specifier = ">=0.52,<1" },
 ]
 
 [package.metadata.requires-dev]

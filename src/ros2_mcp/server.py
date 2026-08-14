@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from mcp.server import MCPServer
+from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 
 from ros2_mcp.application.runtime.service import RuntimeService
 from ros2_mcp.config.settings import (
@@ -48,12 +50,18 @@ async def app_lifespan(
         ros_adapter.close()
 
 
-def create_server() -> MCPServer:
+def create_server(
+    *,
+    token_verifier: TokenVerifier | None = None,
+    auth: AuthSettings | None = None,
+) -> MCPServer:
     """Create and configure the ROS 2 runtime MCP server."""
     server = MCPServer(
         name="ros2-mcp",
         instructions=SERVER_INSTRUCTIONS,
         lifespan=app_lifespan,
+        token_verifier=token_verifier,
+        auth=auth,
     )
 
     register_runtime_tools(server)

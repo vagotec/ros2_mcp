@@ -207,3 +207,121 @@ def test_load_settings_rejects_non_positive_limit(
         match="max_managed_processes must be greater than zero",
     ):
         load_settings(config_path)
+
+
+def test_load_packaged_default_http_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Load the packaged Streamable HTTP defaults."""
+    monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+    settings = load_settings(resolve_config_path())
+
+    assert settings.http.host == "127.0.0.1"
+    assert settings.http.port == 8000
+    assert settings.http.path == "/mcp"
+
+
+def test_legacy_config_uses_safe_http_defaults(
+    tmp_path: Path,
+) -> None:
+    """Keep configurations without an HTTP section compatible."""
+    config_path = tmp_path / "legacy.toml"
+    _write_test_config(config_path)
+
+    settings = load_settings(config_path)
+
+    assert settings.http.host == "127.0.0.1"
+    assert settings.http.port == 8000
+    assert settings.http.path == "/mcp"
+
+
+def test_load_custom_http_settings(
+    tmp_path: Path,
+) -> None:
+    """Load explicit Streamable HTTP settings."""
+    config_path = tmp_path / "custom-http.toml"
+    _write_test_config(config_path)
+
+    content = config_path.read_text(encoding="utf-8")
+    content += """
+[http]
+host = "127.0.0.1"
+port = 8765
+path = "/robot-mcp/"
+"""
+
+    config_path.write_text(content, encoding="utf-8")
+
+    settings = load_settings(config_path)
+
+    assert settings.http.host == "127.0.0.1"
+    assert settings.http.port == 8765
+    assert settings.http.path == "/robot-mcp"
+
+
+def test_load_settings_rejects_invalid_http_port(
+    tmp_path: Path,
+) -> None:
+    """Reject HTTP ports outside the valid TCP range."""
+    config_path = tmp_path / "invalid-http.toml"
+    _write_test_config(config_path)
+
+    content = config_path.read_text(encoding="utf-8")
+    content += """
+[http]
+host = "127.0.0.1"
+port = 70000
+path = "/mcp"
+"""
+
+    config_path.write_text(content, encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="port must not exceed 65535",
+    ):
+        load_settings(config_path)
+
+
+def test_packaged_http_transport_security_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Load safe packaged HTTP transport security defaults."""
+    monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+    settings = load_settings(resolve_config_path())
+
+    assert settings.http.enable_dns_rebinding_protection is True
+
+    assert settings.http.allowed_hosts == (
+        "127.0.0.1:8000",
+        "localhost:8000",
+    )
+
+    assert settings.http.allowed_origins == (
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    )
+
+
+def test_legacy_config_derives_http_security_defaults(
+    tmp_path: Path,
+) -> None:
+    """Derive safe HTTP security values for legacy configs."""
+    config_path = tmp_path / "legacy-security.toml"
+    _write_test_config(config_path)
+
+    settings = load_settings(config_path)
+
+    assert settings.http.enable_dns_rebinding_protection is True
+
+    assert settings.http.allowed_hosts == (
+        "127.0.0.1:8000",
+        "localhost:8000",
+    )
+
+    assert settings.http.allowed_origins == (
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    )

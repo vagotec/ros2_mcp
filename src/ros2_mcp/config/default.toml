@@ -1,6 +1,22 @@
 [runtime]
 read_topic_timeout_sec = 1.0
 
+[http]
+host = "127.0.0.1"
+port = 8000
+path = "/mcp"
+enable_dns_rebinding_protection = true
+
+allowed_hosts = [
+    "127.0.0.1:8000",
+    "localhost:8000",
+]
+
+allowed_origins = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
+
 [safety]
 protected_topics = [
     "/rosout",
