@@ -1433,3 +1433,11 @@ v0.1.0                               RELEASE CANDIDATE
 ```
 
 `ros2_mcp` is ready for final release verification and promotion from `dev` to `main`.
+
+---
+
+# License
+
+Licensed under the Apache License 2.0.
+
+Copyright 2026 Vagotec.
